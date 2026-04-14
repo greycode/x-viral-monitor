@@ -262,6 +262,18 @@
   "flashStarChartOff": {
     "message": "已关闭星图功能"
   },
+  "featureBookmarkFoldersTitle": {
+    "message": "🔖 书签文件夹菜单"
+  },
+  "featureBookmarkFoldersDesc": {
+    "message": "悬停推文书签按钮即可选择文件夹、查看已保存位置或新建文件夹。需要 X Premium。"
+  },
+  "flashBookmarkFoldersOn": {
+    "message": "已开启书签文件夹菜单"
+  },
+  "flashBookmarkFoldersOff": {
+    "message": "已关闭书签文件夹菜单"
+  },
   "featureBookmarkCountTitle": {
     "message": "🔖 显示书签收藏数"
   },

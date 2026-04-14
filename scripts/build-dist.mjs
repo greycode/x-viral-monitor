@@ -21,6 +21,7 @@ const ITEMS = [
   'lib',
   'src',
   'bridge.js',
+  'bookmark-menu.js',
   'content.js',
   'manifest.json',
   'popup.html',

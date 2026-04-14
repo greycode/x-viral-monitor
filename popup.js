@@ -161,6 +161,7 @@ const DEFAULT_FEATURES = {
   featureVelocityLeaderboard: true,
   featureCopyAsMarkdown: true,
   featureStarChart: true,
+  featureBookmarkFolders: false,
   showBookmarkCount: true,
   leaderboardEdgeHideEnabled: true,
   badgeStyle: 'pill-solid',
@@ -351,6 +352,7 @@ const leaderboardToggle = document.getElementById('feat-leaderboard');
 const leaderboardEdgeHideToggle = document.getElementById('lb-edge-hide');
 const copyMdToggle = document.getElementById('feat-copy-md');
 const starChartToggle = document.getElementById('feat-starchart');
+const bookmarkFolderToggle = document.getElementById('feat-bookmark-folders');
 const bookmarkCountToggle = document.getElementById('feat-bookmark-count');
 const leaderboardCountInput = document.getElementById('lb-count');
 const badgeStyleSelect = document.getElementById('badge-style');
@@ -503,6 +505,7 @@ chrome.storage.sync.get(STORAGE_DEFAULTS, (items) => {
   leaderboardEdgeHideToggle.checked = items.leaderboardEdgeHideEnabled !== false;
   copyMdToggle.checked = items.featureCopyAsMarkdown !== false;
   starChartToggle.checked = items.featureStarChart !== false;
+  if (bookmarkFolderToggle) bookmarkFolderToggle.checked = !!items.featureBookmarkFolders;
   bookmarkCountToggle.checked = items.showBookmarkCount !== false;
   leaderboardCountInput.value = normalizeCount(items.leaderboardCount);
   setCustomSelectValue(badgeStyleSelect, items.badgeStyle === 'inline-classic' ? 'inline-classic' : 'pill-solid');
@@ -675,6 +678,12 @@ copyMdToggle.addEventListener('change', () => {
 starChartToggle.addEventListener('change', () => {
   chrome.storage.sync.set({ featureStarChart: starChartToggle.checked }, () => {
     flash(tr(starChartToggle.checked ? 'flashStarChartOn' : 'flashStarChartOff'));
+  });
+});
+
+bookmarkFolderToggle?.addEventListener('change', () => {
+  chrome.storage.sync.set({ featureBookmarkFolders: bookmarkFolderToggle.checked }, () => {
+    flash(tr(bookmarkFolderToggle.checked ? 'flashBookmarkFoldersOn' : 'flashBookmarkFoldersOff'));
   });
 });
 

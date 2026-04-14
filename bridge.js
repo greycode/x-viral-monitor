@@ -189,6 +189,7 @@ const DEFAULT_FEATURES = {
   featureVelocityLeaderboard: true,
   featureCopyAsMarkdown: true,
   featureStarChart: true,
+  featureBookmarkFolders: false,
   showBookmarkCount: true,
   leaderboardEdgeHideEnabled: true,
   badgeStyle: 'pill-solid',
@@ -203,6 +204,8 @@ const DEFAULT_FEATURES = {
   language: 'auto',
 };
 const STORAGE_DEFAULTS = { ...DEFAULT_THRESHOLDS, ...DEFAULT_FEATURES };
+const X_BEARER = 'Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA';
+const OP_LIST = { name: 'BookmarkFoldersSlice', qid: 'i78YDd0Tza-dV4SYs58kRg' };
 
 function normalizeLeaderboardCount(v) {
   const n = Number.parseInt(v, 10);
@@ -285,6 +288,7 @@ async function pushSettings(raw) {
     featureVelocityLeaderboard: !!raw?.featureVelocityLeaderboard,
     featureCopyAsMarkdown: raw?.featureCopyAsMarkdown !== false,
     featureStarChart: raw?.featureStarChart !== false,
+    featureBookmarkFolders: !!raw?.featureBookmarkFolders,
     showBookmarkCount: raw?.showBookmarkCount !== false,
     leaderboardEdgeHideEnabled: raw?.leaderboardEdgeHideEnabled !== false,
     leaderboardCount: normalizeLeaderboardCount(raw?.leaderboardCount),
@@ -293,6 +297,14 @@ async function pushSettings(raw) {
     language: normalizeLanguage(raw?.language),
     effectiveLanguage: getEffectiveLanguageId(raw?.language),
     messages: await getLocalizedMessages(raw?.language),
+  }, '*');
+}
+
+function pushFolders(folders, cachedAt) {
+  window.postMessage({
+    type: 'XVM_FOLDERS_UPDATE',
+    folders: Array.isArray(folders) ? folders : [],
+    cachedAt: cachedAt || 0,
   }, '*');
 }
 
@@ -310,6 +322,13 @@ safeChromeCall(() => {
   });
 });
 
+safeChromeCall(() => {
+  chrome.storage.local.get({ bookmarkFoldersCache: null }, (items) => {
+    const cache = items.bookmarkFoldersCache;
+    if (cache?.folders) pushFolders(cache.folders, cache.cachedAt || 0);
+  });
+});
+
 window.addEventListener('message', (event) => {
   if (event.source !== window) return;
   const type = event.data?.type;
@@ -320,6 +339,17 @@ window.addEventListener('message', (event) => {
         pushSettings(items);
       });
     });
+    safeChromeCall(() => {
+      chrome.storage.local.get({ bookmarkFoldersCache: null }, (items) => {
+        const cache = items.bookmarkFoldersCache;
+        if (cache?.folders) pushFolders(cache.folders, cache.cachedAt || 0);
+      });
+    });
+    return;
+  }
+
+  if (type === 'XVM_REQUEST_FOLDER_REFRESH') {
+    refreshFolders();
     return;
   }
 
@@ -518,6 +548,17 @@ safeChromeCall(() => {
 
 safeChromeCall(() => {
   chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === 'local') {
+      if (changes.bookmarkRefreshAt) {
+        refreshFolders();
+      }
+      if (changes.bookmarkFoldersCache) {
+        const cache = changes.bookmarkFoldersCache.newValue;
+        if (cache?.folders) pushFolders(cache.folders, cache.cachedAt || 0);
+      }
+      return;
+    }
+
     if (areaName !== 'sync') return;
     // Theme changes: broadcast to MAIN-world content.js so leaderboard
     // recolors live. (Popup already self-syncs via its own listener.)
@@ -526,7 +567,7 @@ safeChromeCall(() => {
       window.postMessage({ type: 'XVM_THEME_UPDATE', pref }, '*');
     }
     const grokTouched = changes.grokCommentPrompt || changes.grokPromptTemplates || changes.grokArticlePromptTemplates || changes.grokSelectedPromptId || changes.grokSelectedArticlePromptId || changes.grokTemporaryChat || changes.language;
-    if (!changes.trending && !changes.viral && !changes.featureVelocityLeaderboard && !changes.featureCopyAsMarkdown && !changes.featureStarChart && !changes.showBookmarkCount && !changes.leaderboardEdgeHideEnabled && !changes.badgeStyle && !changes.leaderboardCount && !changes.leaderboardColumns && !changes.language && !grokTouched) return;
+    if (!changes.trending && !changes.viral && !changes.featureVelocityLeaderboard && !changes.featureCopyAsMarkdown && !changes.featureStarChart && !changes.featureBookmarkFolders && !changes.showBookmarkCount && !changes.leaderboardEdgeHideEnabled && !changes.badgeStyle && !changes.leaderboardCount && !changes.leaderboardColumns && !changes.language && !grokTouched) return;
 
     safeChromeCall(() => {
       chrome.storage.sync.get(STORAGE_DEFAULTS, (items) => {
@@ -555,5 +596,86 @@ safeChromeCall(() => {
         });
       }
     });
+  });
+});
+
+let bookmarkRefreshInFlight = null;
+let bookmarkLastFetchAt = 0;
+
+async function refreshFolders() {
+  if (bookmarkRefreshInFlight) return bookmarkRefreshInFlight;
+  if (Date.now() - bookmarkLastFetchAt < 3000) return null;
+
+  bookmarkRefreshInFlight = (async () => {
+    bookmarkLastFetchAt = Date.now();
+    try {
+      const ct0 = document.cookie.match(/ct0=([^;]+)/)?.[1];
+      if (!ct0) return;
+
+      const url = `/i/api/graphql/${OP_LIST.qid}/${OP_LIST.name}?variables=${encodeURIComponent('{}')}`;
+      const res = await fetch(url, {
+        credentials: 'include',
+        headers: {
+          authorization: X_BEARER,
+          'x-csrf-token': ct0,
+          'x-twitter-auth-type': 'OAuth2Session',
+          'content-type': 'application/json',
+        },
+      });
+      if (!res.ok) {
+        console.warn('[XVM] refreshFolders HTTP', res.status);
+        return;
+      }
+
+      const data = await res.json();
+      const slice = data?.data?.viewer?.user_results?.result?.bookmark_collections_slice;
+      const errors = Array.isArray(data?.errors) ? data.errors : [];
+      const errorText = errors.map((err) => err?.message || '').join(' ').toLowerCase();
+      const unsupported = errors.length > 0 && /premium|blue|subscription|permission|not allowed|unauthorized/.test(errorText);
+
+      if (unsupported) {
+        const cachedAt = Date.now();
+        safeChromeCall(() => {
+          chrome.storage.local.set({
+            bookmarkFoldersCache: { folders: [], cachedAt },
+            bookmarkNotSupported: true,
+          });
+          chrome.storage.sync.set({ featureBookmarkFolders: false });
+        });
+        pushFolders([], cachedAt);
+        return;
+      }
+
+      if (slice === null || slice === undefined) {
+        console.warn('[XVM] refreshFolders: bookmark_collections_slice missing, treating as transient');
+        return;
+      }
+
+      const folders = (slice.items || [])
+        .map((item) => ({ id: item?.id, name: item?.name }))
+        .filter((folder) => folder.id && folder.name);
+      const cachedAt = Date.now();
+      bookmarkLastFetchAt = cachedAt;
+      safeChromeCall(() => {
+        chrome.storage.local.set({
+          bookmarkFoldersCache: { folders, cachedAt },
+          bookmarkNotSupported: false,
+        });
+      });
+      pushFolders(folders, cachedAt);
+    } catch (err) {
+      console.warn('[XVM] refreshFolders failed', err);
+    } finally {
+      bookmarkRefreshInFlight = null;
+    }
+  })();
+  return bookmarkRefreshInFlight;
+}
+
+safeChromeCall(() => {
+  chrome.storage.local.get({ bookmarkFoldersCache: null }, (items) => {
+    const cache = items.bookmarkFoldersCache;
+    const stale = !cache || !cache.cachedAt || Date.now() - cache.cachedAt > 6 * 3600 * 1000;
+    if (stale) setTimeout(refreshFolders, 500);
   });
 });

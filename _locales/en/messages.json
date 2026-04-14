@@ -264,6 +264,18 @@
   "flashStarChartOff": {
     "message": "Star chart disabled"
   },
+  "featureBookmarkFoldersTitle": {
+    "message": "🔖 Bookmark folder menu"
+  },
+  "featureBookmarkFoldersDesc": {
+    "message": "Hover over a tweet bookmark button to pick a folder, see where it is saved, or create a folder. Requires X Premium."
+  },
+  "flashBookmarkFoldersOn": {
+    "message": "Bookmark folder menu enabled"
+  },
+  "flashBookmarkFoldersOff": {
+    "message": "Bookmark folder menu disabled"
+  },
   "featureBookmarkCountTitle": {
     "message": "🔖 Show bookmark count"
   },

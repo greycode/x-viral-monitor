@@ -262,6 +262,18 @@
   "flashStarChartOff": {
     "message": "スターチャートを無効化"
   },
+  "featureBookmarkFoldersTitle": {
+    "message": "🔖 ブックマークフォルダーメニュー"
+  },
+  "featureBookmarkFoldersDesc": {
+    "message": "ツイートのブックマークボタンにホバーして、フォルダー選択、保存先確認、新規作成ができます。X Premium が必要です。"
+  },
+  "flashBookmarkFoldersOn": {
+    "message": "ブックマークフォルダーメニューを有効化"
+  },
+  "flashBookmarkFoldersOff": {
+    "message": "ブックマークフォルダーメニューを無効化"
+  },
   "featureBookmarkCountTitle": {
     "message": "🔖 ブックマーク数を表示"
   },

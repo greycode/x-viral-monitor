@@ -83,6 +83,7 @@ describe('#45 popup tabs structure (mock A)', () => {
     const about = html.match(/data-tab-panel="about"[\s\S]*?(?=<\/div>\s*<div id="xvm-toast")/)?.[0] || '';
     expect(/id="feat-copy-md"/.test(about)).toBe(true);
     expect(/id="feat-starchart"/.test(about)).toBe(true);
+    expect(/id="feat-bookmark-folders"/.test(about)).toBe(true);
     expect(/id="feat-bookmark-count"/.test(about)).toBe(true);
     expect(/id="grok-prompt"/.test(about)).toBe(true);
     expect(/id="grok-article-prompt"/.test(about)).toBe(true);
@@ -98,7 +99,7 @@ describe('#45 popup tabs structure (mock A)', () => {
   it('keeps all legacy IDs popup.js / popup-rate-filter.js / popup-pro.js depend on', () => {
     for (const id of ['settings-form', 'trending', 'viral', 'badge-style', 'reset',
                       'feat-leaderboard', 'feat-copy-md', 'feat-starchart',
-                      'feat-bookmark-count', 'lb-count', 'lb-col-list',
+                      'feat-bookmark-folders', 'feat-bookmark-count', 'lb-count', 'lb-col-list',
                       'lb-reset-pos', 'lb-reset-msg',
                       'grok-template-select', 'grok-prompt', 'grok-prompt-save',
                       'grok-article-template-select', 'grok-article-prompt',
@@ -330,6 +331,7 @@ describe('#59 popup polish controls', () => {
       'feat-leaderboard',
       'feat-copy-md',
       'feat-starchart',
+      'feat-bookmark-folders',
       'feat-bookmark-count',
       'grok-temp-chat',
     ]) {
