@@ -522,15 +522,21 @@ function renderBadges() {
 
     if (article.hasAttribute('data-xvm-scored')) continue;
 
-    // Find header row before marking scored — if DOM isn't ready, skip and retry later
+    // Find the header row: the flex-row ancestor of caret that also contains User-Name
     const caretBtn = article.querySelector('[data-testid="caret"]');
     if (!caretBtn) continue;
-    let headerRow = caretBtn;
-    while (headerRow && headerRow !== article) {
-      if (headerRow.getBoundingClientRect().width > 200) break;
-      headerRow = headerRow.parentElement;
+    let headerRow = null;
+    let el = caretBtn.parentElement;
+    while (el && el !== article) {
+      const cs = getComputedStyle(el);
+      if (cs.display === 'flex' && cs.flexDirection === 'row'
+        && el.querySelector('[data-testid="User-Name"]')) {
+        headerRow = el;
+        break;
+      }
+      el = el.parentElement;
     }
-    if (!headerRow || headerRow === article) continue;
+    if (!headerRow) continue;
 
     // Only mark scored after we confirmed headerRow is valid
     article.setAttribute('data-xvm-scored', '1');
