@@ -376,8 +376,10 @@ function buildArticleMarkdown(articleResult) {
   if (coverUrl) lines.push(`![](${coverUrl})`, '');
 
   if (state?.blocks?.length) {
-    // Build a map of entityKey → entity (for LINK / IMAGE / MEDIA)
-    const entityMap = state.entityMap || {};
+    // X serialises entityMap as an ARRAY of {key, value} pairs (not the
+    // classic Draft.js {[key]: entity} object). Normalise to a plain
+    // dict so entityRange.key lookups work regardless of array index.
+    const entityMap = normalizeEntityMap(state.entityMap);
     for (const block of state.blocks) {
       lines.push(renderArticleBlock(block, entityMap, mediaLookup));
     }
@@ -442,6 +444,20 @@ function buildArticleMediaLookup(articleResult) {
   }
 
   return map;
+}
+
+function normalizeEntityMap(em) {
+  if (!em) return {};
+  if (Array.isArray(em)) {
+    const out = Object.create(null);
+    for (const entry of em) {
+      if (entry && entry.key != null && entry.value) {
+        out[String(entry.key)] = entry.value;
+      }
+    }
+    return out;
+  }
+  return em;
 }
 
 function renderResolvedMedia(node) {
