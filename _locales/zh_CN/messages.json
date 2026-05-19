@@ -397,5 +397,22 @@
   "advLeaderboardTitle":     { "message": "流速榜详情" },
   "advOtherFeaturesTitle":   { "message": "其它功能" },
   "advGrokShortTitle":       { "message": "Grok 回复 — 短推模板" },
-  "advGrokArticleTitle":     { "message": "Grok 回复 — 长文模板" }
+  "advGrokArticleTitle":     { "message": "Grok 回复 — 长文模板" },
+  "tabPro":         { "message": "Pro" },
+  "tabFilter":      { "message": "过滤" },
+  "tabLeaderboard": { "message": "流速榜" },
+  "tabAbout":       { "message": "关于" },
+  "rfSubShort":     { "message": "短推" },
+  "rfSubLong":      { "message": "长文 (X Article)" },
+  "comingListTitle":{ "message": "v1.8.0 即将推出" },
+  "chipTierFree":   { "message": "免费" },
+  "chipTierTrial":  { "message": "试用" },
+  "chipTierPro":    { "message": "Pro" },
+  "chipTrialDays":  { "message": "还剩 $DAYS$ 天", "placeholders": { "DAYS": { "content": "$1" } } },
+  "chipTrialOne":   { "message": "还剩 1 天" },
+  "themeLabel":     { "message": "主题" },
+  "themeHint":      { "message": "在暖色明亮与深色之间切换,选择已同步到 chrome.storage.sync。" },
+  "themeSwitchToDark":  { "message": "切换到深色" },
+  "themeSwitchToLight": { "message": "切换到明亮" },
+  "advAppearanceTitle": { "message": "外观" }
 }

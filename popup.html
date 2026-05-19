@@ -6,11 +6,38 @@
   <title>X Viral Monitor</title>
   <style>
     /*
-     * Tier-Card Dashboard (mock D) — shadcn-style dark popup.
-     * Path B: zero build / hand-written tokens. View switching via
-     * `<body data-view="dashboard|rate-filter|activate|advanced">`.
+     * Tabs layout (mock A) — shadcn-style dark popup.
+     * Locked 2026-05-19 (3rd UI pivot after Accordion C / Dashboard D).
+     * Top header w/ tier chip + 4 main tabs (Pro / Filter / Leaderboard /
+     * About). Filter tab nests Short/Long sub-tabs.
      */
+    /* Light theme (default, warm sand palette from v1.6.x) */
     :root {
+      --bg:        #f4efe5;
+      --surface:   #fffcf6;
+      --surface-2: #f5ede1;
+      --surface-3: #e9dcc5;
+      --border:    rgba(86, 60, 34, 0.18);
+      --border-hi: rgba(86, 60, 34, 0.32);
+      --text:      #24180f;
+      --text-2:    #4a3a2e;
+      --muted:     #6e5b4d;
+      --accent:    #bf5a2a;
+      --accent-2:  #a04017;
+      --accent-hi: #d97540;
+      --orange:    #c2410c;
+      --ok:        #2a7f3f;
+      --warn:      #b8782e;
+      --danger:    #b14a2a;
+      --radius:    10px;
+      --radius-sm: 8px;
+      --radius-xs: 6px;
+      --card:           var(--surface);
+      --line:           var(--border);
+      --accent-strong:  var(--accent-hi);
+    }
+    /* Dark theme (shadcn slate-950 + cyan-500, opt-in via toggle) */
+    body[data-theme="dark"] {
       --bg:        #020617;
       --surface:   #0f172a;
       --surface-2: #1e293b;
@@ -27,17 +54,13 @@
       --ok:        #4ade80;
       --warn:      #fbbf24;
       --danger:    #f87171;
-      --radius:    12px;
-      --radius-sm: 8px;
-      --radius-xs: 6px;
-      /* Legacy aliases so popup-rate-filter.js inline CSS dark-inherits. */
-      --card:           var(--surface);
-      --line:           var(--border);
-      --accent-strong:  var(--accent-hi);
     }
+    /* CTA buttons inherit accent contrast; both themes work because text
+       color #0b1120 is dark (cyan-500 / bf5a2a both pass AA). Override
+       per-theme if needed. */
     * { box-sizing: border-box; margin: 0; }
     body {
-      width: 360px;
+      width: 380px;
       font-family: "Inter", "Avenir Next", "PingFang SC", "Microsoft YaHei", sans-serif;
       font-size: 13px;
       color: var(--text);
@@ -45,197 +68,148 @@
     }
     .popup { padding: 12px; }
 
-    /* === View switching === */
-    .view { display: none; }
-    body[data-view="dashboard"]   .view-dashboard,
-    body[data-view="rate-filter"] .view-rate-filter,
-    body[data-view="activate"]    .view-activate,
-    body[data-view="advanced"]    .view-advanced { display: block; }
-
-    .view-back {
-      display: inline-flex; align-items: center; gap: 4px;
-      padding: 6px 10px; margin-bottom: 10px;
-      border-radius: var(--radius-sm);
-      background: var(--surface);
-      border: 1px solid var(--border);
-      color: var(--text-2); font-size: 12px;
-      cursor: pointer;
+    /* === Header === */
+    .app-header {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
     }
-    .view-back:hover { background: var(--surface-2); color: var(--text); }
-    .view-back svg { width: 14px; height: 14px; }
-
-    /* === Hero card === */
-    .hero {
-      background: var(--surface);
-      border: 1px solid var(--border-hi);
-      border-radius: var(--radius);
-      padding: 16px;
-      margin: 0 0 12px;
-      position: relative;
-    }
-    .hero-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-    .hero-brand { display: flex; align-items: center; gap: 8px; }
-    .hero-brand-icon {
+    .app-logo {
       width: 28px; height: 28px; border-radius: 8px;
       background: linear-gradient(135deg, var(--accent), #0e7490);
-      display: grid; place-items: center;
       color: #0b1120; font-weight: 800; font-size: 14px;
+      display: grid; place-items: center;
     }
-    .hero-brand-text { display: flex; flex-direction: column; line-height: 1.15; }
-    .hero-brand-name { font-size: 12px; font-weight: 600; color: var(--text); }
-    .hero-brand-sub  { font-size: 10px; color: var(--muted); }
-    .hero-menu-btn {
-      border: none; background: transparent; color: var(--muted);
-      cursor: pointer; padding: 4px;
-    }
-    .hero-menu-btn:hover { color: var(--text); }
-    .hero-menu-btn svg { width: 18px; height: 18px; }
+    .app-title { flex: 1; }
+    .app-title .name { display: block; font-size: 13px; font-weight: 700; color: var(--text); }
+    .app-title .sub  { display: block; font-size: 10px; color: var(--muted); }
 
-    .hero-tier {
-      font-size: 40px; line-height: 1; font-weight: 800;
-      letter-spacing: 0.02em; margin-bottom: 4px;
-    }
-    body[data-tier="trial"] .hero-tier { color: var(--orange); }
-    body[data-tier="free"]  .hero-tier { color: var(--muted); }
-    body[data-tier="pro"]   .hero-tier { color: var(--ok); }
-    .hero-tier-sub { font-size: 12px; color: var(--text-2); margin-bottom: 14px; }
-
-    .hero-cta-row { display: flex; gap: 6px; }
-    .hero-cta {
-      flex: 1; text-align: center;
-      padding: 10px 12px;
-      border-radius: var(--radius-sm);
-      background: var(--accent); border: 1px solid var(--accent);
-      color: #0b1120; font-weight: 600; font-size: 13px;
-      text-decoration: none; cursor: pointer;
-      display: inline-flex; justify-content: center; align-items: center; gap: 6px;
-    }
-    .hero-cta:hover { background: var(--accent-hi); border-color: var(--accent-hi); }
-    .hero-cta.secondary { background: transparent; color: var(--accent-hi); }
-    .hero-cta.secondary:hover { background: var(--surface-2); }
-    .hero-act-link {
-      display: block; text-align: center; margin-top: 8px;
-      font-size: 11px; color: var(--muted); cursor: pointer;
-      background: none; border: none; width: 100%;
-    }
-    .hero-act-link:hover { color: var(--accent-hi); }
-
-    .hero-pro-meta { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); font-size: 11px; color: var(--muted); }
-    .hero-pro-meta .row { display: flex; justify-content: space-between; padding: 2px 0; }
-    .hero-pro-meta code { color: var(--text); font-family: ui-monospace, Menlo, monospace; }
-
-    /* === Feature cards === */
-    .features-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 12px 14px;
-      margin: 0 0 12px;
-    }
-    .features-card.pro {
+    #tier-chip {
+      font-size: 10.5px; padding: 4px 10px; border-radius: 999px;
+      font-weight: 600; letter-spacing: 0.02em;
       border: 1px solid transparent;
-      background:
-        linear-gradient(var(--surface), var(--surface)) padding-box,
-        linear-gradient(135deg, var(--accent), #1d4ed8) border-box;
+      display: inline-flex; align-items: center; gap: 4px;
     }
-    .features-head {
-      display: flex; align-items: center; gap: 6px;
-      font-size: 12.5px; font-weight: 700;
-      color: var(--text); margin: 0 0 8px;
-    }
-    .features-head svg { width: 16px; height: 16px; color: var(--accent-hi); }
-    .features-head .sub { font-size: 10.5px; font-weight: 500; color: var(--accent-hi); margin-left: 4px; }
-    .features-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 4px; }
-    .features-list li {
-      display: flex; align-items: center; gap: 8px;
-      padding: 7px 4px;
-      border-bottom: 1px solid var(--border);
-      font-size: 12.5px;
-    }
-    .features-list li:last-child { border-bottom: none; }
-    .features-list li svg { width: 16px; height: 16px; color: var(--text-2); flex: 0 0 16px; }
-    .features-list .ft-label { flex: 1; color: var(--text); }
-    .chip {
-      font-size: 10.5px; padding: 3px 8px; border-radius: 999px;
-      background: rgba(74, 222, 128, 0.12); color: var(--ok);
-      border: 1px solid rgba(74, 222, 128, 0.3);
-      display: inline-flex; align-items: center; gap: 3px;
-      font-family: inherit; line-height: normal;
-    }
-    .chip svg { width: 11px; height: 11px; color: inherit; }
-    button.chip {
+    body[data-tier="free"]  #tier-chip { color: var(--muted); border-color: var(--border-hi); background: var(--surface); }
+    body[data-tier="trial"] #tier-chip { color: var(--orange); border-color: rgba(194, 65, 12, 0.45); background: rgba(194, 65, 12, 0.10); }
+    body[data-tier="pro"]   #tier-chip { color: var(--ok); border-color: rgba(42, 127, 63, 0.45); background: rgba(42, 127, 63, 0.10); }
+    body[data-theme="dark"][data-tier="trial"] #tier-chip { color: var(--orange); border-color: rgba(249, 115, 22, 0.45); background: rgba(249, 115, 22, 0.10); }
+    body[data-theme="dark"][data-tier="pro"]   #tier-chip { color: var(--ok); border-color: rgba(74, 222, 128, 0.45); background: rgba(74, 222, 128, 0.10); }
+
+    .theme-toggle {
+      width: 28px; height: 28px; padding: 0;
+      border-radius: 999px; border: 1px solid var(--border-hi);
+      background: var(--surface); color: var(--text-2);
+      display: inline-flex; align-items: center; justify-content: center;
       cursor: pointer;
     }
-    button.chip:hover { filter: brightness(1.1); }
-    .chip.soon { background: rgba(100, 116, 139, 0.15); color: var(--muted); border-color: var(--border-hi); }
+    .theme-toggle:hover { color: var(--text); border-color: var(--accent); }
+    .theme-toggle svg { width: 14px; height: 14px; }
+    body[data-theme="light"] .theme-toggle .ico-moon { display: none; }
+    body[data-theme="dark"]  .theme-toggle .ico-sun  { display: none; }
 
-    .configure-link {
-      font-size: 11.5px; color: var(--accent-hi);
-      background: none; border: none; cursor: pointer;
-      padding: 2px 0;
+    /* === Main tab bar === */
+    .tabbar {
+      display: flex; gap: 4px; padding: 0;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 10px;
     }
-    .configure-link:hover { color: var(--accent); }
+    .tab-btn {
+      flex: 1; padding: 8px 4px;
+      background: none; border: none;
+      color: var(--muted); font-size: 12px; font-weight: 500;
+      cursor: pointer; position: relative;
+      transition: color 120ms;
+    }
+    .tab-btn:hover { color: var(--text-2); }
+    .tab-btn[aria-selected="true"] {
+      color: var(--text); font-weight: 700;
+    }
+    .tab-btn[aria-selected="true"]::after {
+      content: ""; position: absolute;
+      left: 8px; right: 8px; bottom: -1px; height: 2px;
+      background: var(--accent); border-radius: 2px;
+    }
+    .tab-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 4px; }
 
-    /* Inline switch (CSS-only checkbox styled) */
-    .switch { position: relative; display: inline-block; width: 32px; height: 18px; }
-    .switch input { opacity: 0; width: 0; height: 0; }
-    .switch .slider {
-      position: absolute; inset: 0; cursor: pointer;
-      background: var(--surface-3); border-radius: 999px;
-      transition: 200ms;
-    }
-    .switch .slider::before {
-      content: ""; position: absolute; top: 2px; left: 2px;
-      width: 14px; height: 14px; border-radius: 50%;
-      background: white; transition: 200ms;
-    }
-    .switch input:checked + .slider { background: var(--accent); }
-    .switch input:checked + .slider::before { transform: translateX(14px); }
+    /* === Tab panels === */
+    [role="tabpanel"] { display: none; }
+    [role="tabpanel"][data-active="1"] { display: block; }
 
-    /* === Footer === */
-    .footer-line {
-      text-align: center; font-size: 10.5px; color: var(--muted);
-      margin: 8px 0 0;
-    }
-    .footer-line a { color: var(--accent); text-decoration: none; }
-
-    /* === Toast === */
-    #xvm-toast {
-      position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%);
-      background: var(--surface-2); color: var(--text);
+    /* === Pro tab === */
+    .pro-banner {
+      background: var(--surface);
       border: 1px solid var(--border-hi);
-      padding: 8px 14px; border-radius: var(--radius-sm);
-      font-size: 12px; opacity: 0; pointer-events: none;
-      transition: opacity 200ms;
-      z-index: 9999;
+      border-radius: var(--radius);
+      padding: 14px; margin-bottom: 10px;
     }
-    #xvm-toast.show { opacity: 1; }
+    .pro-banner .tier-big {
+      font-size: 36px; font-weight: 800; letter-spacing: 0.02em;
+      line-height: 1; margin-bottom: 4px;
+    }
+    body[data-tier="free"]  .pro-banner .tier-big { color: var(--muted); }
+    body[data-tier="trial"] .pro-banner .tier-big { color: var(--orange); }
+    body[data-tier="pro"]   .pro-banner .tier-big { color: var(--ok); }
+    .pro-banner .tier-sub { font-size: 11.5px; color: var(--text-2); margin-bottom: 12px; }
+    .pro-cta-row { display: flex; flex-direction: column; gap: 6px; }
+    .pro-cta {
+      display: inline-flex; justify-content: center; align-items: center; gap: 6px;
+      padding: 9px 12px; border-radius: var(--radius-sm);
+      background: var(--accent); border: 1px solid var(--accent);
+      color: #0b1120; font-weight: 600; font-size: 12.5px;
+      text-decoration: none; cursor: pointer;
+    }
+    .pro-cta:hover { background: var(--accent-hi); border-color: var(--accent-hi); }
+    .pro-cta.secondary { background: transparent; color: var(--accent-hi); }
+    .pro-cta.secondary:hover { background: var(--surface-2); }
+    .pro-cta svg { width: 14px; height: 14px; }
 
-    /* === Activate view === */
-    .activate-form { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; }
-    .activate-form h2 { font-size: 13px; margin-bottom: 8px; color: var(--text); }
-    .activate-form label { display: block; font-size: 11px; color: var(--muted); margin: 8px 0 4px; }
-    .activate-form input[type="text"] {
-      width: 100%; padding: 8px 10px;
-      background: var(--bg); border: 1px solid var(--border-hi);
-      border-radius: var(--radius-sm); color: var(--text); font-size: 12px;
-    }
-    .activate-form input[type="text"]:focus { outline: 2px solid var(--accent); }
-    .activate-form .actions { display: flex; gap: 6px; margin-top: 10px; }
-    .activate-form .actions button {
-      flex: 1; padding: 8px; border-radius: var(--radius-sm);
-      border: 1px solid var(--border-hi); background: var(--surface-2); color: var(--text);
-      font-size: 12px; cursor: pointer;
-    }
-    .activate-form .actions button.primary {
-      background: var(--accent); border-color: var(--accent); color: #0b1120; font-weight: 600;
-    }
-    .activate-form .actions button:disabled { opacity: 0.5; cursor: not-allowed; }
-    .activate-msg { margin-top: 8px; font-size: 11px; min-height: 14px; }
-    .activate-msg[data-kind="ok"]  { color: var(--ok); }
-    .activate-msg[data-kind="err"] { color: var(--danger); }
+    .pro-meta { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); font-size: 11px; color: var(--muted); }
+    .pro-meta .row { display: flex; justify-content: space-between; padding: 2px 0; }
+    .pro-meta code { color: var(--text); font-family: ui-monospace, Menlo, monospace; }
 
-    /* === Rate-filter section (popup-rate-filter.js inline CSS) === */
+    /* Activation form inline in Pro tab */
+    .pro-activate { margin-top: 10px; padding: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+    .pro-activate label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+    .pro-activate input { width: 100%; padding: 6px 8px; background: var(--bg); border: 1px solid var(--border-hi); border-radius: var(--radius-xs); color: var(--text); font-size: 12px; }
+    .pro-activate input:focus { outline: 2px solid var(--accent); }
+    .pro-activate .actions { display: flex; gap: 6px; margin-top: 8px; justify-content: flex-end; }
+    .pro-activate button { padding: 6px 12px; border-radius: var(--radius-xs); border: 1px solid var(--border-hi); background: var(--surface-2); color: var(--text); font-size: 12px; cursor: pointer; }
+    .pro-activate button.primary { background: var(--accent); border-color: var(--accent); color: #0b1120; }
+    .pro-activate button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .pro-msg { margin-top: 6px; font-size: 11px; min-height: 14px; }
+    .pro-msg[data-kind="ok"]  { color: var(--ok); }
+    .pro-msg[data-kind="err"] { color: var(--danger); }
+
+    /* Coming soon list */
+    .coming-list {
+      margin-top: 12px; padding: 10px;
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    }
+    .coming-list-title { font-size: 11.5px; font-weight: 600; color: var(--accent-hi); margin-bottom: 6px; }
+    .coming-list ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 4px; }
+    .coming-list li { display: flex; align-items: center; gap: 8px; padding: 5px 0; font-size: 12px; color: var(--text-2); }
+    .coming-list li svg { width: 14px; height: 14px; color: var(--muted); }
+    .coming-list li .label { flex: 1; }
+    .coming-list li .chip-soon { font-size: 10px; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); color: var(--muted); border: 1px solid var(--border-hi); }
+
+    /* === Filter tab (sub-tabs) === */
+    .sub-tabbar {
+      display: flex; gap: 4px; margin: 8px 0 10px;
+      padding: 3px; background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+    }
+    .sub-tab-btn {
+      flex: 1; padding: 6px 4px;
+      background: transparent; border: none; border-radius: var(--radius-xs);
+      color: var(--text-2); font-size: 11.5px; font-weight: 500; cursor: pointer;
+    }
+    .sub-tab-btn:hover { color: var(--text); }
+    .sub-tab-btn[aria-selected="true"] {
+      background: var(--accent); color: #0b1120; font-weight: 600;
+    }
+    [data-sub-panel] { display: none; }
+    [data-sub-panel][data-active="1"] { display: block; }
+
+    /* === Rate filter (popup-rate-filter.js inline styles) === */
     .rf-section[data-locked="1"] { opacity: 0.55; }
     .rf-section[data-locked="1"] input, .rf-section[data-locked="1"] button { cursor: not-allowed; }
     .rf-title { display: none; }
@@ -244,38 +218,57 @@
       background: rgba(251, 191, 36, 0.08); color: var(--warn);
       font-size: 11px; border: 1px dashed var(--warn);
     }
-    .rf-toggle { margin: 4px 0 8px; font-weight: 600; }
+    .rf-toggle { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font-weight: 600; font-size: 13px; }
     .rf-fieldset {
-      border: 1px solid var(--border); border-radius: var(--radius-sm);
-      padding: 6px 10px 8px; margin: 0 0 8px; background: var(--bg);
+      border: none; padding: 0; margin: 0;
     }
-    .rf-fieldset legend { padding: 0 4px; font-size: 11px; color: var(--muted); }
-    .rf-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 4px 0; font-size: 12px; }
+    .rf-fieldset legend { display: none; }
+    .rf-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 8px 0; font-size: 12px; color: var(--text-2); }
     .rf-row input[type="number"] {
-      width: 100px; padding: 6px 8px; border: 1px solid var(--border);
+      width: 110px; padding: 6px 8px; border: 1px solid var(--border-hi);
       border-radius: var(--radius-xs); background: var(--bg); color: var(--text);
       font: inherit; font-size: 12px; text-align: right;
     }
-    .rf-rule-hint { font-size: 11px; color: var(--muted); margin: 4px 0 8px; }
-    .rf-actions { display: flex; gap: 6px; justify-content: flex-end; }
+    .rf-rule-hint { font-size: 10.5px; color: var(--muted); margin: 8px 0; line-height: 1.5; }
+    .rf-actions { display: flex; gap: 6px; justify-content: flex-end; margin-top: 10px; }
     .rf-btn, .rf-btn-ghost {
-      padding: 6px 12px; border-radius: var(--radius-sm); font-size: 12px;
-      cursor: pointer; border: 1px solid var(--accent);
+      padding: 7px 14px; border-radius: var(--radius-xs); font-size: 12px;
+      cursor: pointer; border: 1px solid var(--accent); font-weight: 600;
     }
     .rf-btn       { background: var(--accent); color: #0b1120; }
     .rf-btn-ghost { background: transparent; color: var(--accent-hi); }
-    .rf-msg { margin-top: 6px; font-size: 11px; min-height: 14px; }
+    .rf-msg { margin-top: 8px; font-size: 11px; min-height: 14px; }
     .rf-msg[data-kind="ok"]  { color: var(--ok); }
     .rf-msg[data-kind="err"] { color: var(--danger); }
 
-    /* === Advanced view — re-use existing classes with dark theme === */
-    .advanced-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; margin: 0 0 10px; }
-    .advanced-section h3 { font-size: 12px; margin-bottom: 8px; color: var(--text-2); font-weight: 600; }
+    /* Scope (Home / Lists) chips inside Filter tab */
+    .rf-scope { display: flex; gap: 6px; margin: 10px 0; }
+    .rf-scope label {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 5px 10px; border-radius: 999px;
+      background: var(--surface); border: 1px solid var(--border-hi);
+      color: var(--text-2); font-size: 11.5px; cursor: pointer;
+      user-select: none;
+    }
+    .rf-scope input { margin: 0; }
+    .rf-scope label:has(input:checked) { background: rgba(6, 182, 212, 0.10); color: var(--accent-hi); border-color: var(--accent); }
+
+    /* === Switch === */
+    .switch { position: relative; display: inline-block; width: 34px; height: 19px; flex: 0 0 34px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .switch .slider { position: absolute; inset: 0; cursor: pointer; background: var(--surface-3); border-radius: 999px; transition: 200ms; }
+    .switch .slider::before { content: ""; position: absolute; top: 2px; left: 2px; width: 15px; height: 15px; border-radius: 50%; background: white; transition: 200ms; }
+    .switch input:checked + .slider { background: var(--accent); }
+    .switch input:checked + .slider::before { transform: translateX(15px); }
+
+    /* === Leaderboard tab + About tab (legacy controls in dark theme) === */
+    .panel-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; margin: 0 0 10px; }
+    .panel-card h3 { font-size: 12px; margin-bottom: 8px; color: var(--text-2); font-weight: 600; }
     label.field { display: flex; flex-direction: column; gap: 4px; font-size: 11.5px; color: var(--text-2); margin: 6px 0; }
     .row { display: flex; gap: 8px; }
     .row > .field { flex: 1; }
     input[type="number"], input[type="text"], select, textarea {
-      padding: 6px 8px; border: 1px solid var(--border); border-radius: var(--radius-xs);
+      padding: 6px 8px; border: 1px solid var(--border-hi); border-radius: var(--radius-xs);
       background: var(--bg); color: var(--text); font: inherit; font-size: 12px;
     }
     input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
@@ -315,139 +308,100 @@
     .grok-template .grok-template-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 6px; }
     .inline-toggle { display: flex; align-items: center; gap: 6px; font-size: 11px; margin: 6px 0; color: var(--text-2); }
     .divider { height: 1px; background: var(--border); margin: 10px 0; }
+
+    /* === Footer === */
+    .footer-line {
+      text-align: center; font-size: 10.5px; color: var(--muted);
+      margin: 8px 0 0;
+    }
+    .footer-line a { color: var(--accent); text-decoration: none; }
+
+    /* === Toast === */
+    #xvm-toast {
+      position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%);
+      background: var(--surface-2); color: var(--text);
+      border: 1px solid var(--border-hi);
+      padding: 8px 14px; border-radius: var(--radius-sm);
+      font-size: 12px; opacity: 0; pointer-events: none;
+      transition: opacity 200ms; z-index: 9999;
+    }
+    #xvm-toast.show { opacity: 1; }
   </style>
 </head>
-<body data-view="dashboard" data-tier="free">
+<body data-tab="filter" data-tier="free" data-theme="light">
 
   <!-- ============ Lucide SVG icon sprite ============ -->
   <svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden" focusable="false">
-    <symbol id="icon-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15 8.5 22 9.5 17 14.5 18.5 22 12 18 5.5 22 7 14.5 2 9.5 9 8.5 12 2"/></symbol>
     <symbol id="icon-sparkles" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3l1.5 4.5L15 9l-4.5 1.5L9 15l-1.5-4.5L3 9l4.5-1.5L9 3z"/><path d="M19 3v4"/><path d="M21 5h-4"/><path d="M19 17v4"/><path d="M21 19h-4"/></symbol>
-    <symbol id="icon-gauge" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 14L19 7"/><circle cx="12" cy="14" r="2"/><path d="M4 18a8 8 0 1 1 16 0"/></symbol>
-    <symbol id="icon-trending-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></symbol>
-    <symbol id="icon-clipboard" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></symbol>
-    <symbol id="icon-filter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></symbol>
-    <symbol id="icon-palette" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="0.5" fill="currentColor"/><circle cx="17.5" cy="10.5" r="0.5" fill="currentColor"/><circle cx="8.5" cy="7.5" r="0.5" fill="currentColor"/><circle cx="6.5" cy="12.5" r="0.5" fill="currentColor"/><path d="M12 2a10 10 0 1 0 10 10c0-2.21-1.79-3-4-3h-2a3 3 0 0 1-3-3V4a2 2 0 0 0-1-2z"/></symbol>
-    <symbol id="icon-webhook" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 16.98h-5.99c-1.66 0-3.01-1.34-3.01-3s1.35-3 3-3"/><path d="M3.07 11.5l4.41-7.55a3 3 0 0 1 5.99.06"/><path d="M16.97 19.5l-3.16-5.53a3.001 3.001 0 0 0-5.21-.02"/></symbol>
-    <symbol id="icon-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></symbol>
-    <symbol id="icon-more" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5"  cy="12" r="1"/></symbol>
-    <symbol id="icon-arrow-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></symbol>
-    <symbol id="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></symbol>
+    <symbol id="icon-palette"  viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="0.5" fill="currentColor"/><circle cx="17.5" cy="10.5" r="0.5" fill="currentColor"/><circle cx="8.5" cy="7.5" r="0.5" fill="currentColor"/><circle cx="6.5" cy="12.5" r="0.5" fill="currentColor"/><path d="M12 2a10 10 0 1 0 10 10c0-2.21-1.79-3-4-3h-2a3 3 0 0 1-3-3V4a2 2 0 0 0-1-2z"/></symbol>
+    <symbol id="icon-webhook"  viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 16.98h-5.99c-1.66 0-3.01-1.34-3.01-3s1.35-3 3-3"/><path d="M3.07 11.5l4.41-7.55a3 3 0 0 1 5.99.06"/><path d="M16.97 19.5l-3.16-5.53a3.001 3.001 0 0 0-5.21-.02"/></symbol>
+    <symbol id="icon-bell"     viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></symbol>
+    <symbol id="icon-sun"      viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></symbol>
+    <symbol id="icon-moon"     viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></symbol>
   </svg>
 
   <div class="popup">
 
-    <!-- ============ View: Dashboard ============ -->
-    <div class="view view-dashboard">
+    <!-- ============ Compact header ============ -->
+    <header class="app-header">
+      <div class="app-logo">X</div>
+      <div class="app-title">
+        <span class="name">X-Viral-Monitor Pro</span>
+        <span class="sub" data-i18n="popupSubtitle">Real-time impression velocity on X tweets</span>
+      </div>
+      <span id="tier-chip">FREE</span>
+      <button type="button" id="theme-toggle" class="theme-toggle" aria-label="Toggle theme" title="Toggle theme">
+        <svg class="ico-sun"><use href="#icon-sun"/></svg>
+        <svg class="ico-moon"><use href="#icon-moon"/></svg>
+      </button>
+    </header>
 
-      <!-- Hero card (rendered by popup-pro.js) -->
-      <section id="xvm-pro-section" class="hero" data-tier="free"></section>
-
-      <!-- Free features -->
-      <section class="features-card free">
-        <h2 class="features-head">
-          <svg><use href="#icon-star"/></svg>
-          <span data-i18n="cardFreeFeaturesTitle">Free features</span>
-        </h2>
-        <ul class="features-list">
-          <li>
-            <svg><use href="#icon-gauge"/></svg>
-            <span class="ft-label" data-i18n="featureBadgeLabel">Velocity badges</span>
-            <span class="chip"><svg><use href="#icon-check"/></svg> <span data-i18n="chipEnabled">Enabled</span></span>
-          </li>
-          <li>
-            <svg><use href="#icon-trending-up"/></svg>
-            <span class="ft-label" data-i18n="featureLeaderboardLabel">Leaderboard panel</span>
-            <label class="switch" title="featureLeaderboardLabel">
-              <input id="dash-feat-leaderboard" type="checkbox">
-              <span class="slider"></span>
-            </label>
-          </li>
-          <li>
-            <svg><use href="#icon-clipboard"/></svg>
-            <span class="ft-label" data-i18n="featureCopyMdLabel">Copy as Markdown</span>
-            <label class="switch">
-              <input id="dash-feat-copy-md" type="checkbox">
-              <span class="slider"></span>
-            </label>
-          </li>
-        </ul>
-      </section>
-
-      <!-- Pro features -->
-      <section class="features-card pro">
-        <h2 class="features-head">
-          <svg><use href="#icon-sparkles"/></svg>
-          <span data-i18n="cardProFeaturesTitle">Pro features</span>
-          <span class="sub" data-i18n="cardProFeaturesSub">Unlocked during trial</span>
-        </h2>
-        <ul class="features-list">
-          <li>
-            <svg><use href="#icon-filter"/></svg>
-            <span class="ft-label" data-i18n="featureRateFilterLabel">Velocity filter</span>
-            <button type="button" class="configure-link" data-configure="rate-filter" data-i18n="btnConfigure">Configure →</button>
-          </li>
-          <li>
-            <svg><use href="#icon-palette"/></svg>
-            <span class="ft-label" data-i18n="featureColorCardLabel">Custom color palette</span>
-            <button type="button" class="chip soon" data-configure="color-card" data-i18n="chipComingSoon">Coming soon</button>
-          </li>
-          <li>
-            <svg><use href="#icon-webhook"/></svg>
-            <span class="ft-label" data-i18n="featureWebhookLabel">Private hot-tweet webhook</span>
-            <button type="button" class="chip soon" data-configure="webhook" data-i18n="chipComingSoon">Coming soon</button>
-          </li>
-          <li>
-            <svg><use href="#icon-bell"/></svg>
-            <span class="ft-label" data-i18n="featureBarkLabel">Bark notifications</span>
-            <button type="button" class="chip soon" data-configure="bark" data-i18n="chipComingSoon">Coming soon</button>
-          </li>
-        </ul>
-      </section>
-
-      <p class="footer-line">
-        <span data-i18n="footerPoweredBy">Powered by</span>
-        <a href="https://creem.io" target="_blank" rel="noopener">Creem</a>
-        · v1.7.0
-      </p>
+    <!-- ============ Tab bar ============ -->
+    <div class="tabbar" role="tablist">
+      <button type="button" class="tab-btn" role="tab" data-tab="pro"         aria-selected="false"><span data-i18n="tabPro">Pro</span></button>
+      <button type="button" class="tab-btn" role="tab" data-tab="filter"      aria-selected="true"><span data-i18n="tabFilter">Filter</span></button>
+      <button type="button" class="tab-btn" role="tab" data-tab="leaderboard" aria-selected="false"><span data-i18n="tabLeaderboard">Leaderboard</span></button>
+      <button type="button" class="tab-btn" role="tab" data-tab="about"       aria-selected="false"><span data-i18n="tabAbout">About</span></button>
     </div>
 
-    <!-- ============ View: Rate-filter detail ============ -->
-    <div class="view view-rate-filter">
-      <button type="button" class="view-back" data-view-back>
-        <svg><use href="#icon-arrow-left"/></svg>
-        <span data-i18n="btnBack">Back</span>
-      </button>
-      <section id="rate-filter-section" class="rf-section" data-locked="0"></section>
-    </div>
+    <!-- ============ Tab: Pro ============ -->
+    <section role="tabpanel" id="tabpanel-pro" data-tab-panel="pro">
+      <!-- popup-pro.js renders banner + CTAs + meta into #xvm-pro-section,
+           and inline activate form into #activate-inline below it. -->
+      <div id="xvm-pro-section" class="pro-banner" data-tier="free"></div>
 
-    <!-- ============ View: Activate license ============ -->
-    <div class="view view-activate">
-      <button type="button" class="view-back" data-view-back>
-        <svg><use href="#icon-arrow-left"/></svg>
-        <span data-i18n="btnBack">Back</span>
-      </button>
-      <section class="activate-form">
-        <h2 data-i18n="activateTitle">Activate existing license</h2>
+      <div class="pro-activate" id="activate-inline" hidden>
         <label for="activate-key" data-i18n="proActivateLabel">Already bought? Enter your license key:</label>
         <input id="activate-key" type="text" autocomplete="off" placeholder="creem-XXXXX...">
         <div class="actions">
           <button type="button" id="activate-cancel" class="adv-btn" data-i18n="btnCancel">Cancel</button>
           <button type="button" id="activate-submit" class="adv-btn primary" data-i18n="proActivateBtn">Activate</button>
         </div>
-        <div class="activate-msg" id="activate-msg"></div>
-      </section>
-    </div>
+        <div class="pro-msg" id="activate-msg"></div>
+      </div>
 
-    <!-- ============ View: Advanced (3-dot menu) ============ -->
-    <div class="view view-advanced">
-      <button type="button" class="view-back" data-view-back>
-        <svg><use href="#icon-arrow-left"/></svg>
-        <span data-i18n="btnBack">Back</span>
-      </button>
+      <div class="coming-list">
+        <div class="coming-list-title" data-i18n="comingListTitle">Coming in v1.8.0</div>
+        <ul>
+          <li><svg><use href="#icon-palette"/></svg><span class="label" data-i18n="featureColorCardLabel">Custom color palette</span><span class="chip-soon" data-i18n="chipComingSoon">Coming soon</span></li>
+          <li><svg><use href="#icon-webhook"/></svg><span class="label" data-i18n="featureWebhookLabel">Private hot-tweet webhook</span><span class="chip-soon" data-i18n="chipComingSoon">Coming soon</span></li>
+          <li><svg><use href="#icon-bell"/></svg><span class="label" data-i18n="featureBarkLabel">Bark notifications</span><span class="chip-soon" data-i18n="chipComingSoon">Coming soon</span></li>
+        </ul>
+      </div>
+    </section>
 
-      <section class="advanced-section">
-        <h3 data-i18n="advBadgeThresholdsTitle">Badge thresholds & style</h3>
+    <!-- ============ Tab: Filter ============ -->
+    <section role="tabpanel" id="tabpanel-filter" data-tab-panel="filter" data-active="1">
+      <!-- popup-rate-filter.js renders into #rate-filter-section with
+           nested Short/Long sub-tabs (see rebuilt buildSection). -->
+      <div id="rate-filter-section" class="rf-section" data-locked="0"></div>
+    </section>
+
+    <!-- ============ Tab: Leaderboard ============ -->
+    <section role="tabpanel" id="tabpanel-leaderboard" data-tab-panel="leaderboard">
+
+      <div class="panel-card">
+        <h3 data-i18n="advBadgeThresholdsTitle">Badge thresholds &amp; style</h3>
         <div class="info-box">
           <div class="tier"><span class="icon">🌱</span><span class="label" data-i18n="tierNormal">Normal</span><span class="range" id="range-green">&lt; 1,000/h</span></div>
           <div class="tier"><span class="icon">🚀</span><span class="label" data-i18n="tierTrending">Trending</span><span class="range" id="range-orange">1,000 ~ 10,000/h</span></div>
@@ -455,17 +409,10 @@
         </div>
         <form id="settings-form">
           <div class="row">
-            <label class="field">
-              <span data-i18n="thresholdTrending">🚀 Trending threshold</span>
-              <input id="trending" type="number" min="1" step="1" required>
-            </label>
-            <label class="field">
-              <span data-i18n="thresholdViral">🔥 Viral threshold</span>
-              <input id="viral" type="number" min="2" step="1" required>
-            </label>
+            <label class="field"><span data-i18n="thresholdTrending">🚀 Trending threshold</span><input id="trending" type="number" min="1" step="1" required></label>
+            <label class="field"><span data-i18n="thresholdViral">🔥 Viral threshold</span><input id="viral" type="number" min="2" step="1" required></label>
           </div>
-          <label class="field">
-            <span data-i18n="badgeStyleLabel">🏷️ Badge style</span>
+          <label class="field"><span data-i18n="badgeStyleLabel">🏷️ Badge style</span>
             <select id="badge-style">
               <option value="pill-solid" data-i18n="badgeStylePillSolid">Pill solid</option>
               <option value="inline-classic" data-i18n="badgeStyleInlineClassic">Inline classic</option>
@@ -477,21 +424,15 @@
           </div>
           <p id="status" class="status-msg" role="status"></p>
         </form>
-      </section>
+      </div>
 
-      <section class="advanced-section">
+      <div class="panel-card">
         <h3 data-i18n="advLeaderboardTitle">Leaderboard details</h3>
         <div class="feature-row">
           <input id="feat-leaderboard" type="checkbox">
           <div class="ft-body">
-            <label for="feat-leaderboard">
-              <div class="ft-title" data-i18n="featureLeaderboardTitle">📊 Velocity leaderboard</div>
-            </label>
-            <div class="ft-lb-count">
-              <label for="lb-count" data-i18n="featureLeaderboardShowTop">Show top</label>
-              <input id="lb-count" type="number" min="1" max="50" step="1">
-              <span data-i18n="featureLeaderboardTweets">tweets</span>
-            </div>
+            <label for="feat-leaderboard"><div class="ft-title" data-i18n="featureLeaderboardTitle">📊 Velocity leaderboard</div></label>
+            <div class="ft-lb-count"><label for="lb-count" data-i18n="featureLeaderboardShowTop">Show top</label><input id="lb-count" type="number" min="1" max="50" step="1"><span data-i18n="featureLeaderboardTweets">tweets</span></div>
             <div class="ft-lb-cols">
               <div class="ft-lb-cols-hint" data-i18n="featureLeaderboardColsHint">Drag to reorder · check to show</div>
               <ul id="lb-col-list" class="col-list"></ul>
@@ -502,80 +443,60 @@
             </div>
           </div>
         </div>
-      </section>
+      </div>
+    </section>
 
-      <section class="advanced-section">
+    <!-- ============ Tab: About ============ -->
+    <section role="tabpanel" id="tabpanel-about" data-tab-panel="about">
+
+      <div class="panel-card">
+        <h3 data-i18n="advAppearanceTitle">Appearance</h3>
+        <div class="rf-row">
+          <span data-i18n="themeLabel">Theme</span>
+          <button type="button" id="theme-toggle-about" class="adv-btn"></button>
+        </div>
+        <div class="ft-desc" data-i18n="themeHint">Switch between warm light and dark mode. Your choice is synced to chrome.storage.sync.</div>
+      </div>
+
+      <div class="panel-card">
         <h3 data-i18n="advOtherFeaturesTitle">Other features</h3>
-        <div class="feature-row">
-          <input id="feat-copy-md" type="checkbox">
-          <div class="ft-body">
-            <label for="feat-copy-md">
-              <div class="ft-title" data-i18n="featureCopyMdTitle">📋 Copy tweet as Markdown</div>
-              <div class="ft-desc" data-i18n="featureCopyMdDesc">Adds a "Copy as Markdown" entry at the bottom of X's native share menu.</div>
-            </label>
-          </div>
-        </div>
-        <div class="feature-row">
-          <input id="feat-starchart" type="checkbox">
-          <div class="ft-body">
-            <label for="feat-starchart">
-              <div class="ft-title" data-i18n="popupStarChartLabel">⭐ Thank-You Star Chart</div>
-              <div class="ft-desc" data-i18n="popupStarChartHint">Adds a star-chart option to the share menu of any tweet.</div>
-            </label>
-          </div>
-        </div>
-        <div class="feature-row">
-          <input id="feat-bookmark-count" type="checkbox">
-          <div class="ft-body">
-            <label for="feat-bookmark-count">
-              <div class="ft-title" data-i18n="featureBookmarkCountTitle">🔖 Show bookmark count</div>
-              <div class="ft-desc" data-i18n="featureBookmarkCountDesc">Display the bookmark count next to each tweet's bookmark button on the timeline.</div>
-            </label>
-          </div>
-        </div>
-      </section>
+        <div class="feature-row"><input id="feat-copy-md" type="checkbox"><div class="ft-body"><label for="feat-copy-md"><div class="ft-title" data-i18n="featureCopyMdTitle">📋 Copy tweet as Markdown</div><div class="ft-desc" data-i18n="featureCopyMdDesc">Adds a "Copy as Markdown" entry at the bottom of X's native share menu.</div></label></div></div>
+        <div class="feature-row"><input id="feat-starchart" type="checkbox"><div class="ft-body"><label for="feat-starchart"><div class="ft-title" data-i18n="popupStarChartLabel">⭐ Thank-You Star Chart</div><div class="ft-desc" data-i18n="popupStarChartHint">Adds a star-chart option to the share menu of any tweet.</div></label></div></div>
+        <div class="feature-row"><input id="feat-bookmark-count" type="checkbox"><div class="ft-body"><label for="feat-bookmark-count"><div class="ft-title" data-i18n="featureBookmarkCountTitle">🔖 Show bookmark count</div><div class="ft-desc" data-i18n="featureBookmarkCountDesc">Display the bookmark count next to each tweet's bookmark button on the timeline.</div></label></div></div>
+      </div>
 
-      <section class="advanced-section grok-template">
+      <div class="panel-card grok-template">
         <h3 data-i18n="advGrokShortTitle">Grok reply — short tweet template</h3>
-        <div class="grok-template-grid">
-          <select id="grok-template-select" aria-label="Grok prompt template"></select>
-          <input id="grok-template-name" type="text" aria-label="Grok prompt template name">
-        </div>
-        <label class="field" for="grok-prompt">
-          <span>推文模板（短推文，&lt;600 字）</span>
-          <textarea id="grok-prompt" spellcheck="false"></textarea>
-        </label>
+        <div class="grok-template-grid"><select id="grok-template-select" aria-label="Grok prompt template"></select><input id="grok-template-name" type="text" aria-label="Grok prompt template name"></div>
+        <label class="field" for="grok-prompt"><span>推文模板（短推文，&lt;600 字）</span><textarea id="grok-prompt" spellcheck="false"></textarea></label>
         <div class="ft-desc" data-i18n="popupGrokPromptHint">Use [推文内容] where the source tweet should be inserted.</div>
-        <label class="inline-toggle" for="grok-temp-chat">
-          <input id="grok-temp-chat" type="checkbox">
-          <span data-i18n="popupGrokTempChatLabel">Use temporary chat (don't pollute Grok history)</span>
-        </label>
+        <label class="inline-toggle" for="grok-temp-chat"><input id="grok-temp-chat" type="checkbox"><span data-i18n="popupGrokTempChatLabel">Use temporary chat (don't pollute Grok history)</span></label>
         <div class="actions compact">
           <button type="button" id="grok-prompt-add" class="adv-btn" data-i18n="btnAdd">Add</button>
           <button type="button" id="grok-prompt-save" class="adv-btn" data-i18n="btnSave">Save</button>
           <button type="button" id="grok-prompt-delete" class="adv-btn" data-i18n="btnDelete">Delete</button>
           <button type="button" id="grok-prompt-reset" class="adv-btn" data-i18n="btnReset">Reset</button>
         </div>
-      </section>
+      </div>
 
-      <section class="advanced-section grok-template">
+      <div class="panel-card grok-template">
         <h3 data-i18n="advGrokArticleTitle">Grok reply — article template</h3>
-        <div class="grok-template-grid">
-          <select id="grok-article-template-select" aria-label="Grok article prompt template"></select>
-          <input id="grok-article-template-name" type="text" aria-label="Grok article template name">
-        </div>
-        <label class="field" for="grok-article-prompt">
-          <span>文章模板（X Article / 长文，≥600 字时使用）</span>
-          <textarea id="grok-article-prompt" spellcheck="false"></textarea>
-        </label>
+        <div class="grok-template-grid"><select id="grok-article-template-select" aria-label="Grok article prompt template"></select><input id="grok-article-template-name" type="text" aria-label="Grok article template name"></div>
+        <label class="field" for="grok-article-prompt"><span>文章模板（X Article / 长文，≥600 字时使用）</span><textarea id="grok-article-prompt" spellcheck="false"></textarea></label>
+        <div class="ft-desc">回复 X 上的长文 / Article 时自动使用这组模板。</div>
         <div class="actions compact">
           <button type="button" id="grok-article-prompt-add" class="adv-btn" data-i18n="btnAdd">Add</button>
           <button type="button" id="grok-article-prompt-save" class="adv-btn" data-i18n="btnSave">Save</button>
           <button type="button" id="grok-article-prompt-delete" class="adv-btn" data-i18n="btnDelete">Delete</button>
           <button type="button" id="grok-article-prompt-reset" class="adv-btn" data-i18n="btnReset">Reset</button>
         </div>
-      </section>
-    </div>
+      </div>
+
+      <p class="footer-line">
+        <a href="https://github.com/Icy-Cat/x-viral-monitor" target="_blank" rel="noopener">github.com/Icy-Cat/x-viral-monitor</a>
+        · v1.7.0
+      </p>
+    </section>
 
   </div>
 

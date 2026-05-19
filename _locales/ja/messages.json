@@ -397,5 +397,22 @@
   "advLeaderboardTitle":     { "message": "ランキング詳細" },
   "advOtherFeaturesTitle":   { "message": "その他の機能" },
   "advGrokShortTitle":       { "message": "Grok — 短い投稿テンプレート" },
-  "advGrokArticleTitle":     { "message": "Grok — 記事テンプレート" }
+  "advGrokArticleTitle":     { "message": "Grok — 記事テンプレート" },
+  "tabPro":         { "message": "Pro" },
+  "tabFilter":      { "message": "フィルター" },
+  "tabLeaderboard": { "message": "ランキング" },
+  "tabAbout":       { "message": "情報" },
+  "rfSubShort":     { "message": "短い投稿" },
+  "rfSubLong":      { "message": "長文 (X Article)" },
+  "comingListTitle":{ "message": "v1.8.0 で公開予定" },
+  "chipTierFree":   { "message": "無料" },
+  "chipTierTrial":  { "message": "トライアル" },
+  "chipTierPro":    { "message": "Pro" },
+  "chipTrialDays":  { "message": "残り $DAYS$ 日", "placeholders": { "DAYS": { "content": "$1" } } },
+  "chipTrialOne":   { "message": "残り 1 日" },
+  "themeLabel":     { "message": "テーマ" },
+  "themeHint":      { "message": "ライト(暖色)とダークを切り替えできます。設定は chrome.storage.sync に保存されます。" },
+  "themeSwitchToDark":  { "message": "ダークに切替" },
+  "themeSwitchToLight": { "message": "ライトに切替" },
+  "advAppearanceTitle": { "message": "外観" }
 }

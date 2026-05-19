@@ -139,48 +139,28 @@
     return `${k.slice(0, 4)}••••${k.slice(-4)}`;
   }
 
-  // ─── Render (Tier-Card Dashboard hero, mock D) ─────────────────────
-  // Hero card layout: brand row, big TIER text, sub-line, primary CTA,
-  // optional "Activate existing license" secondary link, optional Pro
-  // meta block. Activation form lives in a separate view (view-activate)
-  // wired via window 'xvm-pro-nav' custom event listened by
-  // popup-dashboard.js.
+  // ─── Render (Pro tab banner, mock A) ───────────────────────────────
+  // Inside #xvm-pro-section (.pro-banner): big TIER label + sub + CTA
+  // row (or Pro meta when active). Tabs are the navigation, so no 3-dot
+  // menu. The header tier-chip syncs from body.dataset.tier.
   function render(container, info) {
     const tier = info.tier;
     const days = info.daysLeft;
     container.dataset.tier = tier;
     document.body.dataset.tier = tier;
+    window.__xvmProDays = (tier === 'trial') ? days : null;
+    window.dispatchEvent(new CustomEvent('xvm-pro-days', { detail: { days, tier } }));
     container.innerHTML = '';
-
-    // Head row: brand + 3-dot menu
-    const head = document.createElement('div');
-    head.className = 'hero-head';
-    head.innerHTML = `
-      <div class="hero-brand">
-        <div class="hero-brand-icon">X</div>
-        <div class="hero-brand-text">
-          <span class="hero-brand-name">X Viral Monitor</span>
-          <span class="hero-brand-sub">Powered by Creem</span>
-        </div>
-      </div>
-      <button type="button" class="hero-menu-btn" id="hero-menu-btn" aria-label="More">
-        <svg><use href="#icon-more"/></svg>
-      </button>
-    `;
-    container.appendChild(head);
-    head.querySelector('#hero-menu-btn').addEventListener('click', () => {
-      window.dispatchEvent(new CustomEvent('xvm-pro-nav', { detail: { view: 'advanced' } }));
-    });
 
     // Tier giant label
     const tierEl = document.createElement('div');
-    tierEl.className = 'hero-tier';
+    tierEl.className = 'tier-big';
     tierEl.textContent = tier === 'pro' ? 'PRO' : tier === 'trial' ? 'TRIAL' : 'FREE';
     container.appendChild(tierEl);
 
     // Tier subtitle
     const sub = document.createElement('div');
-    sub.className = 'hero-tier-sub';
+    sub.className = 'tier-sub';
     if (tier === 'trial') {
       sub.textContent = days === 1 ? t('heroTrialDayOne') : t('heroTrialDaysLeft', days);
     } else if (tier === 'pro') {
@@ -190,53 +170,46 @@
     }
     container.appendChild(sub);
 
-    // CTA row
     if (tier !== 'pro') {
-      const cta = document.createElement('a');
-      cta.className = 'hero-cta';
-      cta.href = BUY_URL_ANNUAL; // primary CTA = annual (best value, save 17%)
-      cta.target = '_blank'; cta.rel = 'noopener';
-      cta.innerHTML = `<svg><use href="#icon-sparkles"/></svg> <span></span>`;
-      cta.querySelector('span').textContent = t('heroCtaUpgradeAnnual');
       const row = document.createElement('div');
-      row.className = 'hero-cta-row';
-      row.appendChild(cta);
-      container.appendChild(row);
-
-      // Secondary: Monthly link
-      const monthly = document.createElement('button');
-      monthly.type = 'button';
-      monthly.className = 'hero-act-link';
+      row.className = 'pro-cta-row';
+      // Primary CTA = annual (save 17%)
+      const annual = document.createElement('a');
+      annual.className = 'pro-cta';
+      annual.href = BUY_URL_ANNUAL; annual.target = '_blank'; annual.rel = 'noopener';
+      annual.innerHTML = `<svg><use href="#icon-sparkles"/></svg> <span></span>`;
+      annual.querySelector('span').textContent = t('heroCtaUpgradeAnnual');
+      row.appendChild(annual);
+      // Secondary CTAs
+      const monthly = document.createElement('a');
+      monthly.className = 'pro-cta secondary';
+      monthly.href = BUY_URL_MONTHLY; monthly.target = '_blank'; monthly.rel = 'noopener';
       monthly.textContent = t('heroCtaUpgradeMonthly');
-      monthly.addEventListener('click', () => {
-        window.open(BUY_URL_MONTHLY, '_blank', 'noopener');
-      });
-      container.appendChild(monthly);
-
-      // "Activate existing license" link
+      row.appendChild(monthly);
+      // "Activate existing license" — opens inline form
       const actLink = document.createElement('button');
       actLink.type = 'button';
-      actLink.className = 'hero-act-link';
+      actLink.className = 'pro-cta secondary';
       actLink.textContent = t('heroActivateExistingLink');
       actLink.addEventListener('click', () => {
         window.dispatchEvent(new CustomEvent('xvm-pro-nav', { detail: { view: 'activate' } }));
       });
-      container.appendChild(actLink);
+      row.appendChild(actLink);
+      container.appendChild(row);
     } else {
-      // Pro: manage subscription CTA + meta block
-      const cta = document.createElement('a');
-      cta.className = 'hero-cta secondary';
-      cta.href = 'https://www.creem.io/dashboard';
-      cta.target = '_blank'; cta.rel = 'noopener';
-      cta.textContent = t('proManageBtn');
       const row = document.createElement('div');
-      row.className = 'hero-cta-row';
-      row.appendChild(cta);
+      row.className = 'pro-cta-row';
+      const manage = document.createElement('a');
+      manage.className = 'pro-cta secondary';
+      manage.href = 'https://www.creem.io/dashboard';
+      manage.target = '_blank'; manage.rel = 'noopener';
+      manage.textContent = t('proManageBtn');
+      row.appendChild(manage);
       container.appendChild(row);
 
       const rec = info.record || {};
       const meta = document.createElement('div');
-      meta.className = 'hero-pro-meta';
+      meta.className = 'pro-meta';
       meta.innerHTML = `
         <div class="row"><span></span><code>${maskKey(rec.key)}</code></div>
         ${rec.activatedAt ? `<div class="row"><span></span><span>${new Date(rec.activatedAt).toLocaleDateString()}</span></div>` : ''}

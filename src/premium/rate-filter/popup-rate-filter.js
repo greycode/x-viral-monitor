@@ -75,28 +75,38 @@
       <h2 class="rf-title" data-k="rfTitle"></h2>
       <p class="rf-locked-hint" id="rf-locked-hint" data-k="rfLockedHint" hidden></p>
 
-      <label class="rf-row rf-toggle">
-        <input type="checkbox" id="rf-enabled" />
+      <label class="rf-toggle">
+        <span class="switch">
+          <input type="checkbox" id="rf-enabled" />
+          <span class="slider"></span>
+        </span>
         <span data-k="rfEnabled"></span>
       </label>
 
-      <fieldset class="rf-fieldset">
-        <legend data-k="rfScopeLegend"></legend>
-        <label class="rf-row"><input type="checkbox" id="rf-scopeHome" /> <span data-k="rfScopeHome"></span></label>
-        <label class="rf-row"><input type="checkbox" id="rf-scopeList" /> <span data-k="rfScopeList"></span></label>
-      </fieldset>
+      <!-- Scope chips (Home / Lists) -->
+      <div class="rf-scope">
+        <label><input type="checkbox" id="rf-scopeHome" /> <span data-k="rfScopeHome"></span></label>
+        <label><input type="checkbox" id="rf-scopeList" /> <span data-k="rfScopeList"></span></label>
+      </div>
 
-      <fieldset class="rf-fieldset">
-        <legend data-k="rfShortLegend"></legend>
-        <label class="rf-row"><span data-k="rfRatePerMin"></span> <input type="number" id="rf-shortRateThreshold" min="0" step="1" /></label>
-        <label class="rf-row"><span data-k="rfAbsoluteViews"></span> <input type="number" id="rf-shortAbsoluteThreshold" min="0" step="100" /></label>
-      </fieldset>
+      <!-- Short / Long sub-tabs -->
+      <div class="sub-tabbar" role="tablist">
+        <button type="button" class="sub-tab-btn" role="tab" data-sub-tab="short" aria-selected="true"  data-k="rfSubShort"></button>
+        <button type="button" class="sub-tab-btn" role="tab" data-sub-tab="long"  aria-selected="false" data-k="rfSubLong"></button>
+      </div>
 
-      <fieldset class="rf-fieldset">
-        <legend data-k="rfLongLegend"></legend>
-        <label class="rf-row"><span data-k="rfRatePerMin"></span> <input type="number" id="rf-longRateThreshold" min="0" step="1" /></label>
-        <label class="rf-row"><span data-k="rfAbsoluteViews"></span> <input type="number" id="rf-longAbsoluteThreshold" min="0" step="100" /></label>
-      </fieldset>
+      <div data-sub-panel="short" data-active="1">
+        <fieldset class="rf-fieldset">
+          <label class="rf-row"><span data-k="rfRatePerMin"></span>    <input type="number" id="rf-shortRateThreshold"     min="0" step="1"   /></label>
+          <label class="rf-row"><span data-k="rfAbsoluteViews"></span> <input type="number" id="rf-shortAbsoluteThreshold" min="0" step="100" /></label>
+        </fieldset>
+      </div>
+      <div data-sub-panel="long">
+        <fieldset class="rf-fieldset">
+          <label class="rf-row"><span data-k="rfRatePerMin"></span>    <input type="number" id="rf-longRateThreshold"     min="0" step="1"   /></label>
+          <label class="rf-row"><span data-k="rfAbsoluteViews"></span> <input type="number" id="rf-longAbsoluteThreshold" min="0" step="100" /></label>
+        </fieldset>
+      </div>
 
       <p class="rf-rule-hint" data-k="rfRuleHint"></p>
 
@@ -107,6 +117,20 @@
       <div class="rf-msg" id="rf-msg"></div>
     `;
     section.querySelectorAll('[data-k]').forEach((el) => { el.textContent = t(el.dataset.k); });
+
+    // Sub-tab switching (Short / Long)
+    section.querySelectorAll('[data-sub-tab]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const target = btn.dataset.subTab;
+        section.querySelectorAll('[data-sub-tab]').forEach((b) => {
+          b.setAttribute('aria-selected', String(b.dataset.subTab === target));
+        });
+        section.querySelectorAll('[data-sub-panel]').forEach((p) => {
+          p.dataset.active = (p.dataset.subPanel === target) ? '1' : '0';
+        });
+      });
+    });
+
     return section;
   }
 

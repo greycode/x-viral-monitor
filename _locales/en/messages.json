@@ -399,5 +399,22 @@
   "advLeaderboardTitle":     { "message": "Leaderboard details" },
   "advOtherFeaturesTitle":   { "message": "Other features" },
   "advGrokShortTitle":       { "message": "Grok reply — short tweet template" },
-  "advGrokArticleTitle":     { "message": "Grok reply — article template" }
+  "advGrokArticleTitle":     { "message": "Grok reply — article template" },
+  "tabPro":         { "message": "Pro" },
+  "tabFilter":      { "message": "Filter" },
+  "tabLeaderboard": { "message": "Leaderboard" },
+  "tabAbout":       { "message": "About" },
+  "rfSubShort":     { "message": "Short tweet" },
+  "rfSubLong":      { "message": "X Article (long)" },
+  "comingListTitle":{ "message": "Coming in v1.8.0" },
+  "chipTierFree":   { "message": "Free" },
+  "chipTierTrial":  { "message": "Trial" },
+  "chipTierPro":    { "message": "Pro" },
+  "chipTrialDays":  { "message": "$DAYS$ days left", "placeholders": { "DAYS": { "content": "$1" } } },
+  "chipTrialOne":   { "message": "1 day left" },
+  "themeLabel":     { "message": "Theme" },
+  "themeHint":      { "message": "Switch between warm light and dark mode. Your choice is synced to chrome.storage.sync." },
+  "themeSwitchToDark":  { "message": "Switch to dark" },
+  "themeSwitchToLight": { "message": "Switch to light" },
+  "advAppearanceTitle": { "message": "Appearance" }
 }
