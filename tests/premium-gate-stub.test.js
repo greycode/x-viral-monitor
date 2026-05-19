@@ -51,6 +51,50 @@ describe('#45 M1 step 1 — premium gate scaffold', () => {
     ).toBe(true);
   });
 
+  // #45 dev2 race condition fix (Codex root-cause):
+  //   activate() ran while gate was still 'free' (fail-closed default
+  //   before isolated.js async-pushed tier), so subscribe() was skipped
+  //   and the net hook had no listener → decisions map stayed empty →
+  //   nothing was hidden after tier flipped to trial. The fix is to
+  //   make subscribe() idempotent and invoke it from onTierChange.
+  describe('#45 dev2 race condition — subscribe() idempotency + onTierChange wiring', () => {
+    it('declares a module-scope subscribed flag', () => {
+      expect(/let\s+subscribed\s*=\s*false\s*;/.test(filter),
+        'filter.js must declare `let subscribed = false;` for idempotency'
+      ).toBe(true);
+    });
+
+    it('subscribe() guards on the subscribed flag (early return)', () => {
+      const body = filter.match(/function\s+subscribe\s*\(\)\s*\{[\s\S]*?\n  \}/);
+      expect(body, 'subscribe() body must be locatable').not.toBeNull();
+      expect(/if\s*\(\s*subscribed\s*\)\s*return\s*;/.test(body[0]),
+        'subscribe() must early-return if already subscribed'
+      ).toBe(true);
+      expect(/subscribed\s*=\s*true\s*;/.test(body[0]),
+        'subscribe() must set subscribed = true once it commits to registering'
+      ).toBe(true);
+    });
+
+    it('onTierChange callback calls subscribe() when gate opens', () => {
+      // Match the onTierChange callback body and assert subscribe() is
+      // called on the gate-open branch.
+      const cb = filter.match(/onTierChange\(\(tier\)\s*=>\s*\{[\s\S]*?\}\)/);
+      expect(cb, 'onTierChange callback must be locatable').not.toBeNull();
+      const body = cb[0];
+      expect(/subscribe\s*\(\s*\)\s*;/.test(body),
+        'onTierChange must call subscribe() so the net hook gets registered when tier flips up'
+      ).toBe(true);
+    });
+
+    it('reset() clears the subscribed flag (for hot-reload + tests)', () => {
+      const reset = filter.match(/reset\(\)\s*\{[\s\S]*?\n    \},/);
+      expect(reset, 'reset() body must be locatable').not.toBeNull();
+      expect(/subscribed\s*=\s*false\s*;/.test(reset[0]),
+        'reset() must reset subscribed to false so a fresh subscribe is possible'
+      ).toBe(true);
+    });
+  });
+
   it('manifest content_scripts loads gate before filter before content', () => {
     const main = manifest.content_scripts.find((cs) => cs.world === 'MAIN');
     expect(main, 'manifest must have a MAIN-world content_scripts entry').toBeTruthy();

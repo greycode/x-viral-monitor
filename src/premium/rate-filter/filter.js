@@ -77,13 +77,25 @@
   ];
 
   // === Net hook subscription ===
+  // Race condition fix (dev2 bug, Codex root-cause):
+  //   activate() runs at module load when gate.js still reports 'free'
+  //   (fail-closed default before isolated.js async-pushes the real tier).
+  //   The original code returned early from activate() so subscribe()
+  //   never ran; when tier later flipped to 'trial' via onTierChange,
+  //   subscribe() was never re-invoked → net hook had no listener for X
+  //   GraphQL responses → decisions map stayed empty → applyHidesNow()
+  //   was a no-op.
+  //   Fix: make subscribe() idempotent + invoke it from onTierChange.
+  let subscribed = false;
   function subscribe() {
+    if (subscribed) return;
     if (!window.__xvmNet) {
       // x-net-hook not yet loaded — defensive. Manifest order should
       // guarantee this never fires.
       console.warn('[xvm rate-filter] __xvmNet missing — skipping subscription');
       return;
     }
+    subscribed = true;
     for (const { re, scope } of ENDPOINT_MATCHERS) {
       window.__xvmNet.onResponse(re, async ({ response, source }) => {
         if (!gateOpen()) return;
@@ -200,8 +212,19 @@
   }
 
   window.__xvmPro?.onTierChange((tier) => {
-    if (!gateOpen()) revoke();
-    else applyHidesNow();
+    if (!gateOpen()) {
+      revoke();
+      return;
+    }
+    // Gate just opened → register the net hook (no-op if already
+    // subscribed) so future GraphQL responses are observed, and trigger
+    // an immediate applyHidesNow so any tweets already in the DOM at
+    // first paint have a chance to be hidden once a fresh GraphQL
+    // response classifies them. (Tweets already rendered before the
+    // first GraphQL arrives will still wait for the next response —
+    // acceptable since X re-fetches on scroll.)
+    subscribe();
+    applyHidesNow();
   });
 
   // === Mutation observer (X virtual scroll re-mounts) ===
@@ -219,6 +242,7 @@
     getSettings: () => ({ ...SETTINGS }),
     decisions, // dev introspection
     reset() {
+      subscribed = false;
       decisions.clear();
       counted.clear();
       mo.disconnect();
