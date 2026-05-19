@@ -173,6 +173,14 @@
   }
 
   // === DOM hide ===
+  // We hide the surrounding `cellInnerDiv` rather than the `article` itself.
+  // X wraps each timeline item — tweet + any attached reply-expansion
+  // controls ("Show more replies") — in a single [data-testid=cellInnerDiv]
+  // cell. Hiding the inner article alone left the reply-expansion stub
+  // visible, producing a string of empty "显示更多回复" links in the timeline
+  // (Codex dev3 bb-browser repro). The data-attribute marker stays on the
+  // article so tracking selectors (e.g. revoke's [data-xvm-rate-hidden])
+  // keep working.
   function applyHidesNow() {
     if (!gateOpen()) return; // tier may have flipped to free mid-session
     const arts = document.querySelectorAll('article[data-testid="tweet"]');
@@ -181,14 +189,15 @@
       if (!tid) continue;
       const d = decisions.get(tid);
       if (!d) continue;
+      const cell = art.closest('[data-testid="cellInnerDiv"]') || art;
       if (d.hide) {
-        if (art.style.display !== 'none') {
-          art.style.display = 'none';
+        if (cell.style.display !== 'none') {
+          cell.style.display = 'none';
           art.setAttribute('data-xvm-rate-hidden', d.reason);
           if (!counted.has(tid)) counted.add(tid);
         }
       } else if (art.getAttribute('data-xvm-rate-hidden')) {
-        art.style.display = '';
+        cell.style.display = '';
         art.removeAttribute('data-xvm-rate-hidden');
       }
     }
@@ -206,7 +215,8 @@
   // un-hide everything we previously hid so they regain Free behavior.
   function revoke() {
     document.querySelectorAll('article[data-xvm-rate-hidden]').forEach((art) => {
-      art.style.display = '';
+      const cell = art.closest('[data-testid="cellInnerDiv"]') || art;
+      cell.style.display = '';
       art.removeAttribute('data-xvm-rate-hidden');
     });
   }

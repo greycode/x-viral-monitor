@@ -97,6 +97,20 @@ describe('#45 M1 step 1 — premium gate scaffold', () => {
       ).toBe(true);
     });
 
+    it('hide target is the cellInnerDiv ancestor (not the article itself)', () => {
+      // Codex dev3 bb-browser found that hiding <article> alone left the
+      // X "Show more replies" stub visible — that control lives in the
+      // surrounding [data-testid=cellInnerDiv] cell. applyHidesNow and
+      // revoke must both target the cell.
+      expect(/closest\(\s*['"]\[data-testid="cellInnerDiv"\]['"]\s*\)/.test(filter),
+        'filter.js must call art.closest([data-testid="cellInnerDiv"]) before flipping display'
+      ).toBe(true);
+      // Negative: must NOT directly assign art.style.display = 'none'
+      expect(/art\.style\.display\s*=\s*['"]none['"]/.test(filter),
+        'filter.js must NOT hide the <article> directly — hide the cellInnerDiv ancestor'
+      ).toBe(false);
+    });
+
     it('reset() clears the subscribed flag (for hot-reload + tests)', () => {
       const reset = filter.match(/reset\(\)\s*\{[\s\S]*?\n    \},/);
       expect(reset, 'reset() body must be locatable').not.toBeNull();
