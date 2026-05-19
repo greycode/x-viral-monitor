@@ -1,5 +1,6 @@
 node_modules/
 /release/
+/dist/
 .superpowers/
 .playwright-mcp/
 *.png.bak
