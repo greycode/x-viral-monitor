@@ -345,5 +345,20 @@
   "proDeactivateBtn":    { "message": "無効化" },
   "proDeactivating":     { "message": "無効化中…" },
   "proDeactivatedOk":    { "message": "無効化しました。" },
-  "proDeactivateErr":    { "message": "無効化に失敗しました。" }
+  "proDeactivateErr":    { "message": "無効化に失敗しました。" },
+  "rfTitle":         { "message": "流速フィルター (Pro)" },
+  "rfLockedHint":    { "message": "Pro にアップグレードして流速フィルターを解放。" },
+  "rfEnabled":       { "message": "低流速の投稿を非表示にする" },
+  "rfScopeLegend":   { "message": "スコープ" },
+  "rfScopeHome":     { "message": "ホーム" },
+  "rfScopeList":     { "message": "リスト" },
+  "rfShortLegend":   { "message": "短い投稿 — いずれかが閾値超なら表示" },
+  "rfLongLegend":    { "message": "X Articles 長文 — いずれかが閾値超なら表示" },
+  "rfRatePerMin":    { "message": "views / 分 ≥" },
+  "rfAbsoluteViews": { "message": "総表示数 ≥" },
+  "rfRuleHint":      { "message": "ルール: (views/min > 速度閾値) または (総表示数 > 絶対閾値) いずれか成立で表示, それ以外は非表示。" },
+  "rfReset":         { "message": "デフォルト" },
+  "rfSave":          { "message": "保存" },
+  "rfSavedOk":       { "message": "保存しました ✓" },
+  "rfResetOk":       { "message": "リセット ✓" }
 }

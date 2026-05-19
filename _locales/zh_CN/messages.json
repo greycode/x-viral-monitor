@@ -345,5 +345,20 @@
   "proDeactivateBtn":    { "message": "取消激活" },
   "proDeactivating":     { "message": "正在取消…" },
   "proDeactivatedOk":    { "message": "已取消激活。" },
-  "proDeactivateErr":    { "message": "取消激活失败。" }
+  "proDeactivateErr":    { "message": "取消激活失败。" },
+  "rfTitle":         { "message": "流速过滤 (Pro)" },
+  "rfLockedHint":    { "message": "升级 Pro 解锁流速过滤。" },
+  "rfEnabled":       { "message": "隐藏低流速推文" },
+  "rfScopeLegend":   { "message": "作用域" },
+  "rfScopeHome":     { "message": "首页" },
+  "rfScopeList":     { "message": "列表" },
+  "rfShortLegend":   { "message": "短推 — 任一过线即显示" },
+  "rfLongLegend":    { "message": "X Articles 长文 — 任一过线即显示" },
+  "rfRatePerMin":    { "message": "views / 分钟 ≥" },
+  "rfAbsoluteViews": { "message": "总浏览量 ≥" },
+  "rfRuleHint":      { "message": "规则: 若 (views/min > 速率阈值) 或 (总浏览量 > 绝对阈值) 任一成立即显示, 否则隐藏。" },
+  "rfReset":         { "message": "恢复默认" },
+  "rfSave":          { "message": "保存" },
+  "rfSavedOk":       { "message": "已保存 ✓" },
+  "rfResetOk":       { "message": "已重置 ✓" }
 }

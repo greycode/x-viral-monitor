@@ -47,6 +47,7 @@
   const STORAGE_KEY    = 'xvm_license_v1';
   const TRIAL_KEY      = 'xvm_trial_v1';
   const DEVICE_ID_KEY  = 'xvm_device_id';
+  const RATE_FILTER_KEY = 'xvm_rate_filter_v1';
 
   const KEY_RE = /^[A-Za-z0-9_\-]{8,128}$/;
 
@@ -267,10 +268,22 @@
     }
   });
 
+  // ─── Rate filter settings bridge ────────────────────────────────────
+  // Popup (extension context) owns xvm_rate_filter_v1; filter.js (MAIN
+  // world) needs to react to changes. We forward the storage value as
+  // XVM_RATE_SETTINGS_UPDATE postMessage at boot + on every change.
+  async function pushRateSettings() {
+    const settings = await safeStorageGet(RATE_FILTER_KEY, null);
+    if (settings && typeof settings === 'object') {
+      window.postMessage({ type: 'XVM_RATE_SETTINGS_UPDATE', settings }, '*');
+    }
+  }
+
   // ─── Bootstrap: ensure trial started, push tier so MAIN can render ──
   (async () => {
     await ensureTrialStarted();
     pushTier();
+    pushRateSettings();
   })();
 
   // Re-push on storage change so tier flips immediately if the license
@@ -279,6 +292,7 @@
     chrome?.storage?.onChanged?.addListener?.((changes, area) => {
       if (area !== 'local') return;
       if (STORAGE_KEY in changes || TRIAL_KEY in changes) pushTier();
+      if (RATE_FILTER_KEY in changes) pushRateSettings();
     });
   } catch (_) {}
 })();

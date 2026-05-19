@@ -347,5 +347,20 @@
   "proDeactivateBtn":    { "message": "Deactivate" },
   "proDeactivating":     { "message": "Deactivating…" },
   "proDeactivatedOk":    { "message": "Deactivated." },
-  "proDeactivateErr":    { "message": "Deactivation failed." }
+  "proDeactivateErr":    { "message": "Deactivation failed." },
+  "rfTitle":         { "message": "Velocity filter (Pro)" },
+  "rfLockedHint":    { "message": "Upgrade Pro to unlock the velocity filter." },
+  "rfEnabled":       { "message": "Hide low-velocity tweets" },
+  "rfScopeLegend":   { "message": "Scope" },
+  "rfScopeHome":     { "message": "Home" },
+  "rfScopeList":     { "message": "Lists" },
+  "rfShortLegend":   { "message": "Short tweets — keep if either threshold passes" },
+  "rfLongLegend":    { "message": "X Articles (long-form) — keep if either threshold passes" },
+  "rfRatePerMin":    { "message": "views / min ≥" },
+  "rfAbsoluteViews": { "message": "total views ≥" },
+  "rfRuleHint":      { "message": "Rule: keep if (views/min > rate threshold) OR (total views > absolute threshold). Otherwise hide." },
+  "rfReset":         { "message": "Reset defaults" },
+  "rfSave":          { "message": "Save" },
+  "rfSavedOk":       { "message": "Saved ✓" },
+  "rfResetOk":       { "message": "Reset ✓" }
 }

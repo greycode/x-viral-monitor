@@ -60,6 +60,15 @@
   const decisions = new Map();
   const counted = new Set();
 
+  // Listen for settings pushed from isolated.js (popup wrote
+  // chrome.storage.local.xvm_rate_filter_v1 → isolated.js relays).
+  window.addEventListener('message', (event) => {
+    if (event.source !== window) return;
+    if (event.data?.type === 'XVM_RATE_SETTINGS_UPDATE' && event.data.settings) {
+      updateSettings(event.data.settings);
+    }
+  });
+
   // === Endpoint whitelist ===
   const ENDPOINT_MATCHERS = [
     { re: /\/i\/api\/graphql\/[^/]+\/HomeTimeline\b/,             scope: 'home' },
