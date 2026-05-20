@@ -237,6 +237,50 @@ describe('#45 i18n keys (mock A + dual theme)', () => {
   });
 });
 
+describe('#45 i18n lock-step (content.js i18n() ↔ bridge CONTENT_MESSAGE_KEYS ↔ _locales)', () => {
+  it('every i18n(\'…\') key in content.js is listed in bridge.js CONTENT_MESSAGE_KEYS', () => {
+    // Catches the v1.7.0 ship-blocker class of bug where adding a new
+    // i18n key in content.js works in popup but renders the raw key
+    // string in content_script because bridge.js's CONTENT_MESSAGE_KEYS
+    // didn't include it — chrome.i18n.getMessage() never ran for that
+    // key in the localizedStrings push.
+    const content = readFileSync(resolve(repo, 'content.js'), 'utf8');
+    const bridge  = readFileSync(resolve(repo, 'bridge.js'),  'utf8');
+    const keysListed = (bridge.match(/CONTENT_MESSAGE_KEYS\s*=\s*\[([\s\S]*?)\]/)?.[1] || '')
+      .match(/['"]([A-Za-z0-9_]+)['"]/g)?.map((s) => s.slice(1, -1)) || [];
+    const set = new Set(keysListed);
+    // i18n('…') call sites in content.js
+    const calls = [...content.matchAll(/\bi18n\(\s*['"]([A-Za-z0-9_]+)['"]/g)].map((m) => m[1]);
+    const missing = [...new Set(calls)].filter((k) => !set.has(k));
+    expect(missing,
+      `content.js calls i18n(...) on keys missing from bridge.js CONTENT_MESSAGE_KEYS: ${missing.join(', ')}`
+    ).toEqual([]);
+  });
+
+  it('every CONTENT_MESSAGE_KEYS key is declared in en + zh_CN locales', () => {
+    const bridge = readFileSync(resolve(repo, 'bridge.js'), 'utf8');
+    const en = JSON.parse(readFileSync(resolve(repo, '_locales/en/messages.json'), 'utf8'));
+    const zh = JSON.parse(readFileSync(resolve(repo, '_locales/zh_CN/messages.json'), 'utf8'));
+    const keysListed = (bridge.match(/CONTENT_MESSAGE_KEYS\s*=\s*\[([\s\S]*?)\]/)?.[1] || '')
+      .match(/['"]([A-Za-z0-9_]+)['"]/g)?.map((s) => s.slice(1, -1)) || [];
+    const missingEn = keysListed.filter((k) => !en[k]?.message);
+    const missingZh = keysListed.filter((k) => !zh[k]?.message);
+    expect(missingEn, `_locales/en missing keys: ${missingEn.join(', ')}`).toEqual([]);
+    expect(missingZh, `_locales/zh_CN missing keys: ${missingZh.join(', ')}`).toEqual([]);
+  });
+
+  it('every popup.html data-i18n attribute key is declared in en + zh_CN', () => {
+    const html = readFileSync(resolve(repo, 'popup.html'), 'utf8');
+    const en = JSON.parse(readFileSync(resolve(repo, '_locales/en/messages.json'), 'utf8'));
+    const zh = JSON.parse(readFileSync(resolve(repo, '_locales/zh_CN/messages.json'), 'utf8'));
+    const used = [...new Set([...html.matchAll(/data-i18n="([A-Za-z0-9_]+)"/g)].map((m) => m[1]))];
+    const missingEn = used.filter((k) => !en[k]?.message);
+    const missingZh = used.filter((k) => !zh[k]?.message);
+    expect(missingEn, `popup.html references data-i18n keys missing from _locales/en: ${missingEn.join(', ')}`).toEqual([]);
+    expect(missingZh, `popup.html references data-i18n keys missing from _locales/zh_CN: ${missingZh.join(', ')}`).toEqual([]);
+  });
+});
+
 describe('#45 carry-over invariants', () => {
   it('leaderboard default ON (bridge + popup mirror)', () => {
     expect(/featureVelocityLeaderboard:\s*true/.test(bridgeJs)).toBe(true);

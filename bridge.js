@@ -65,6 +65,15 @@ const CONTENT_MESSAGE_KEYS = [
   'contentStarChartFilterBoth',
   'contentStarChartRiverPrev',
   'contentStarChartRiverNext',
+  // v1.7.0 #4 — leaderboard "hot only" Pro-feature toggle (content.js).
+  // These must stay in lock-step with _locales/* and content.js i18n() calls.
+  // Contract test in tests/popup-dashboard.test.js asserts every key
+  // referenced via i18n(...) in content.js is present here.
+  'contentLbHotOnly',
+  'contentLbHotProTitle',
+  'contentLbHotProSub',
+  'contentLbHotMonthly',
+  'contentLbHotAnnual',
 ];
 
 const DEFAULT_FEATURES = {
