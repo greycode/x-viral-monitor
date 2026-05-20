@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         X Viral Monitor Minimal Badge DEBUG
 // @namespace    https://github.com/x-viral-monitor
-// @version      0.1.13-debug.1
+// @version      0.1.13-debug.2
 // @description  Debug build for iOS Userscripts: Eruda + XVM hook/GraphQL/DOM/badge diagnostics.
 // @match        https://x.com/*
 // @match        https://pro.x.com/*
@@ -163,10 +163,13 @@
     leaderboardItems: 0,
     badgeMountAttempts: 0,
     badgeMounts: 0,
+    domFallbackTweets: 0,
     articleScanCount: 0,
     visibleArticles: 0,
     badges: 0,
     articles: 0,
+    graphqlResourceUrls: [],
+    pageHookMode: 'none',
     lastBadgeReason: '',
     lastLog: '',
     settings,
@@ -208,6 +211,41 @@
     (document.head || document.documentElement).appendChild(script);
   }
 
+  function rememberGraphqlResourceUrl(url, source) {
+    if (!url || !GRAPHQL_RE.test(url)) return;
+    const urls = debugState.graphqlResourceUrls;
+    if (!urls.includes(url)) urls.push(url);
+    while (urls.length > 20) urls.shift();
+    debugState.lastLog = `resource:${source}:${url}`.slice(0, 220);
+    updateDebugOverlay();
+  }
+
+  function installResourceObserver() {
+    try {
+      const existing = performance.getEntriesByType?.('resource') || [];
+      for (const entry of existing) rememberGraphqlResourceUrl(entry.name || '', 'initial');
+    } catch (_) {}
+    if (window.PerformanceObserver) {
+      try {
+        const observer = new PerformanceObserver((list) => {
+          for (const entry of list.getEntries()) rememberGraphqlResourceUrl(entry.name || '', 'observer');
+        });
+        observer.observe({ type: 'resource', buffered: true });
+        debugLog('PerformanceObserver resource fallback installed');
+        return;
+      } catch (err) {
+        debugLog('PerformanceObserver install failed', err?.message || err);
+      }
+    }
+    setInterval(() => {
+      try {
+        const entries = performance.getEntriesByType?.('resource') || [];
+        for (const entry of entries) rememberGraphqlResourceUrl(entry.name || '', 'poll');
+      } catch (_) {}
+    }, 2500);
+    debugLog('PerformanceObserver unavailable; resource polling installed');
+  }
+
   function collectDebugMetrics() {
     const articles = document.querySelectorAll('article').length;
     const tweetArticles = document.querySelectorAll('article[data-testid="tweet"]').length;
@@ -223,6 +261,9 @@
       badges,
       articles,
       tweetArticles,
+      domFallbackTweets: debugState.domFallbackTweets || 0,
+      graphqlResourceUrls: debugState.graphqlResourceUrls || [],
+      pageHookMode: debugState.pageHookMode || 'none',
       badgeMountAttempts: debugState.badgeMountAttempts || 0,
       badgeMounts: debugState.badgeMounts || 0,
       lastBadgeReason: debugState.lastBadgeReason || '',
@@ -241,7 +282,10 @@
       <div><b>extractedTweets</b>: ${m.extractedTweets}</div>
       <div><b>badges/articles</b>: ${m.badges} / ${m.articles}</div>
       <div><b>tweetArticles</b>: ${m.tweetArticles}</div>
+      <div><b>pageHookMode</b>: ${escapeHtml(m.pageHookMode)}</div>
+      <div><b>graphqlResourceUrls</b>: ${m.graphqlResourceUrls.length}</div>
       <div><b>leaderboardItems</b>: ${m.leaderboardItems}</div>
+      <div><b>domFallbackTweets</b>: ${m.domFallbackTweets}</div>
       <div><b>badgeAttempts/mounts</b>: ${m.badgeMountAttempts} / ${m.badgeMounts}</div>
       <div><b>lastBadgeReason</b>: ${escapeHtml(m.lastBadgeReason)}</div>
       <div><b>lastIgnored</b>: ${escapeHtml(m.lastIgnoredReason)}</div>
@@ -889,6 +933,86 @@ article[data-testid="tweet"].xvm-article-linked {
       debugLog('page GraphQL hook install failed', err?.message || err);
       console.debug('[XVM-TM] page GraphQL hook install failed', err);
     }
+    injectPageWorldScriptHook();
+  }
+
+  function injectPageWorldScriptHook() {
+    const root = document.documentElement || document.head;
+    if (!root || document.getElementById('xvm-page-world-hook')) {
+      debugState.pageHookMode = debugState.pageHookMode === 'none' ? 'already-present' : debugState.pageHookMode;
+      return;
+    }
+    const script = document.createElement('script');
+    script.id = 'xvm-page-world-hook';
+    script.textContent = `(() => {
+      if (window.__xvmTmPageWorldHook) {
+        window.postMessage({ type: 'XVM_TM_PAGE_HOOK_STATUS', mode: 'page-script-already-installed', at: Date.now() }, '*');
+        return;
+      }
+      window.__xvmTmPageWorldHook = true;
+      const GRAPHQL_RE = /\\/i\\/api\\/graphql\\//;
+      function extractUrl(input) {
+        try {
+          if (window.Request && input instanceof window.Request) return input.url;
+          if (window.URL && input instanceof window.URL) return input.href;
+          if (input && typeof input.url === 'string') return input.url;
+          if (input && typeof input.href === 'string') return input.href;
+          return typeof input === 'string' ? input : '';
+        } catch (_) { return typeof input === 'string' ? input : ''; }
+      }
+      function opNameFromUrl(url) {
+        try {
+          const path = new URL(url, location.origin).pathname;
+          return decodeURIComponent(path.split('/').filter(Boolean).pop() || '');
+        } catch (_) { return ''; }
+      }
+      function postGraphql(url, payload, source) {
+        if (!payload || typeof payload !== 'object') return;
+        window.postMessage({ type: 'XVM_TM_GRAPHQL_RESPONSE', url, opName: opNameFromUrl(url), source, payload, capturedAt: Date.now() }, '*');
+      }
+      try {
+        const originalFetch = window.fetch;
+        if (typeof originalFetch === 'function') {
+          window.fetch = async function (...args) {
+            const url = extractUrl(args[0]);
+            const response = await originalFetch.apply(this, args);
+            if (url && GRAPHQL_RE.test(url)) {
+              response.clone().json().then((payload) => postGraphql(url, payload, 'page-fetch')).catch(() => {});
+            }
+            return response;
+          };
+        }
+      } catch (err) {
+        window.postMessage({ type: 'XVM_TM_PAGE_HOOK_STATUS', mode: 'page-script-fetch-failed', error: String(err?.message || err), at: Date.now() }, '*');
+      }
+      try {
+        const proto = window.XMLHttpRequest && window.XMLHttpRequest.prototype;
+        const originalOpen = proto && proto.open;
+        if (originalOpen) {
+          proto.open = function (method, url, ...rest) {
+            const urlStr = extractUrl(url);
+            if (urlStr && GRAPHQL_RE.test(urlStr)) {
+              this.addEventListener('load', function () {
+                try { postGraphql(urlStr, JSON.parse(this.responseText), 'page-xhr'); } catch (_) {}
+              });
+            }
+            return originalOpen.call(this, method, url, ...rest);
+          };
+        }
+      } catch (err) {
+        window.postMessage({ type: 'XVM_TM_PAGE_HOOK_STATUS', mode: 'page-script-xhr-failed', error: String(err?.message || err), at: Date.now() }, '*');
+      }
+      window.postMessage({ type: 'XVM_TM_PAGE_HOOK_STATUS', mode: 'page-script-active', at: Date.now() }, '*');
+    })();`;
+    try {
+      root.appendChild(script);
+      script.remove();
+      debugState.pageHookMode = 'script-tag-injected';
+      debugLog('page-world script hook injected');
+    } catch (err) {
+      debugState.pageHookMode = 'script-tag-failed';
+      debugLog('page-world script hook injection failed', err?.message || err);
+    }
   }
 
   function scanForTweets(obj) {
@@ -1002,6 +1126,92 @@ article[data-testid="tweet"].xvm-article-linked {
       }
     }
     return { displayName, handle };
+  }
+
+  function parseCompactNumber(raw) {
+    const text = String(raw || '').trim();
+    if (!text) return 0;
+    const match = text.match(/([\d,.]+)\s*([KkMm]|万|千)?/);
+    if (!match) return 0;
+    const n = Number.parseFloat(match[1].replace(/,/g, ''));
+    if (!Number.isFinite(n)) return 0;
+    const suffix = match[2] || '';
+    if (suffix === '万') return Math.round(n * 10000);
+    if (suffix === '千' || suffix.toLowerCase() === 'k') return Math.round(n * 1000);
+    if (suffix.toLowerCase() === 'm') return Math.round(n * 1000000);
+    return Math.round(n);
+  }
+
+  function textCandidatesForMetric(article, selectors) {
+    const out = [];
+    for (const selector of selectors) {
+      article.querySelectorAll(selector).forEach((node) => {
+        out.push(node.getAttribute?.('aria-label') || '');
+        out.push(node.getAttribute?.('title') || '');
+        out.push(node.textContent || '');
+      });
+    }
+    return out.map((s) => String(s || '').trim()).filter(Boolean);
+  }
+
+  function firstMetric(article, selectors, labelPattern) {
+    const candidates = textCandidatesForMetric(article, selectors);
+    for (const text of candidates) {
+      if (labelPattern && !labelPattern.test(text)) continue;
+      const n = parseCompactNumber(text);
+      if (n > 0) return n;
+    }
+    if (labelPattern) {
+      for (const node of article.querySelectorAll('[aria-label], [title]')) {
+        const text = `${node.getAttribute('aria-label') || ''} ${node.getAttribute('title') || ''}`;
+        if (!labelPattern.test(text)) continue;
+        const n = parseCompactNumber(text);
+        if (n > 0) return n;
+      }
+    }
+    return 0;
+  }
+
+  function getTweetTextFromArticle(article) {
+    const tweetText = article.querySelector('[data-testid="tweetText"]');
+    if (tweetText?.textContent) return tweetText.textContent.trim();
+    const blocks = [...article.querySelectorAll('div[lang]')]
+      .map((node) => (node.textContent || '').trim())
+      .filter(Boolean);
+    return blocks[0] || '';
+  }
+
+  function extractVisibleTweetData(article, id) {
+    const replies = firstMetric(article, ['[data-testid="reply"]'], /reply|repl|回复|回覆|返信/i);
+    const retweets = firstMetric(article, ['[data-testid="retweet"]', '[data-testid="unretweet"]'], /repost|retweet|转发|轉發|リポスト/i);
+    const likes = firstMetric(article, ['[data-testid="like"]', '[data-testid="unlike"]'], /like|喜欢|喜歡|いいね/i);
+    const bookmarks = firstMetric(article, ['[data-testid="bookmark"]', '[data-testid="removeBookmark"]'], /bookmark|收藏|ブックマーク/i);
+    let views = firstMetric(article, ['a[href$="/analytics"]', 'a[href*="/analytics"]', '[aria-label*="view" i]', '[aria-label*="查看"]', '[aria-label*="表示"]'], /view|views|查看|浏览|瀏覽|表示/i);
+    if (!views) {
+      const numbers = [...article.querySelectorAll('a[href*="/analytics"], [aria-label], [title], [role="group"]')]
+        .map((node) => `${node.getAttribute?.('aria-label') || ''} ${node.getAttribute?.('title') || ''} ${node.textContent || ''}`)
+        .flatMap((text) => String(text).split(/\s+/))
+        .map(parseCompactNumber)
+        .filter((n) => n > 0);
+      views = numbers.length ? Math.max(...numbers) : 0;
+    }
+    const engagementFloor = likes + retweets + replies + bookmarks;
+    if (!views && engagementFloor) views = Math.max(engagementFloor * 20, engagementFloor + 1);
+    if (!views) return null;
+    const { displayName, handle } = getAuthorInfo(article);
+    return {
+      id,
+      views,
+      likes,
+      retweets,
+      replies,
+      bookmarks,
+      createdAt: new Date().toUTCString(),
+      text: getTweetTextFromArticle(article),
+      authorName: displayName || '',
+      authorScreenName: handle.replace(/^@/, ''),
+      source: 'dom-visible-fallback',
+    };
   }
 
   let leaderboardEl = null;
@@ -1751,10 +1961,17 @@ article[data-testid="tweet"].xvm-article-linked {
         debugState.lastBadgeReason = 'skip:already-scored';
         continue;
       }
-      const data = tweetDataStore.get(tweetId);
+      let data = tweetDataStore.get(tweetId);
       if (!data) {
-        debugState.lastBadgeReason = 'skip:no-captured-data';
-        continue;
+        data = extractVisibleTweetData(article, tweetId);
+        if (data) {
+          tweetDataStore.set(tweetId, data);
+          debugState.domFallbackTweets += 1;
+          debugLog('DOM visible metrics fallback extracted', { tweetId, views: data.views, likes: data.likes, retweets: data.retweets, replies: data.replies });
+        } else {
+          debugState.lastBadgeReason = 'skip:no-captured-data';
+          continue;
+        }
       }
 
       debugState.badgeMountAttempts += 1;
@@ -1854,6 +2071,12 @@ article[data-testid="tweet"].xvm-article-linked {
   const seenGraphqlMessages = new Set();
 
   function handleGraphqlMessage(event) {
+    if (event.data?.type === 'XVM_TM_PAGE_HOOK_STATUS') {
+      debugState.pageHookMode = event.data.mode || debugState.pageHookMode || 'page-status';
+      if (event.data.error) debugState.lastIgnoredReason = event.data.error;
+      debugLog('page-world hook status', { mode: debugState.pageHookMode, error: event.data.error || '' });
+      return;
+    }
     if (event.data?.type !== 'XVM_TM_GRAPHQL_RESPONSE') return;
     const messageKey = [
       event.data.source || '',
@@ -1895,6 +2118,7 @@ article[data-testid="tweet"].xvm-article-linked {
   function bootDomObservers() {
     injectCss();
     installDebugOverlay();
+    installResourceObserver();
     const observer = new MutationObserver(scheduleRender);
     observer.observe(document.documentElement, { childList: true, subtree: true });
     setInterval(scheduleRender, 2000);

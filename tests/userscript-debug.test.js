@@ -11,7 +11,7 @@ const releaseScript = readFileSync(resolve(repo, 'userscript/x-viral-monitor.use
 describe('iOS userscript debug build', () => {
   it('is a separate DEBUG userscript and does not replace the release script', () => {
     expect(debugScript).toContain('@name         X Viral Monitor Minimal Badge DEBUG');
-    expect(debugScript).toContain('@version      0.1.13-debug.1');
+    expect(debugScript).toContain('@version      0.1.13-debug.2');
     expect(debugScript).toContain('Debug build for iOS Userscripts');
     expect(releaseScript).toContain('@name         X Viral Monitor Minimal Badge');
     expect(releaseScript).not.toContain('@name         X Viral Monitor Minimal Badge DEBUG');
@@ -38,6 +38,9 @@ describe('iOS userscript debug build', () => {
       'articles',
       'lastBadgeReason',
       'lastIgnoredReason',
+      'graphqlResourceUrls',
+      'pageHookMode',
+      'domFallbackTweets',
     ]) {
       expect(debugScript).toContain(token);
     }
@@ -52,8 +55,21 @@ describe('iOS userscript debug build', () => {
       'GraphQL message accepted',
       'DOM observers installed',
       'badge mounted',
+      'page-world script hook injected',
+      'PerformanceObserver resource fallback installed',
+      'DOM visible metrics fallback extracted',
     ]) {
       expect(debugScript).toContain(phrase);
     }
+  });
+
+  it('includes iOS fallback paths for sandboxed Userscripts', () => {
+    expect(debugScript).toContain('function injectPageWorldScriptHook()');
+    expect(debugScript).toContain('XVM_TM_PAGE_HOOK_STATUS');
+    expect(debugScript).toContain('source, payload, capturedAt');
+    expect(debugScript).toContain('function installResourceObserver()');
+    expect(debugScript).toContain('performance.getEntriesByType');
+    expect(debugScript).toContain('function extractVisibleTweetData(article, id)');
+    expect(debugScript).toContain('source: \'dom-visible-fallback\'');
   });
 });
