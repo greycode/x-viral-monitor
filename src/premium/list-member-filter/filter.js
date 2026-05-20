@@ -14,7 +14,7 @@
   const DEFAULT_SETTINGS = {
     enabled: false,
     ttlMs: DEFAULT_TTL_MS,
-    scopes: { home: true, list: true, profile: true, status: true },
+    scopes: { home: false, list: false, profile: false, status: true },
     lists: [],
   };
 
@@ -66,9 +66,9 @@
       enabled: raw?.enabled === true,
       ttlMs: Number.isFinite(raw?.ttlMs) ? raw.ttlMs : DEFAULT_TTL_MS,
       scopes: {
-        home: scopes.home !== false,
-        list: scopes.list !== false,
-        profile: scopes.profile !== false,
+        home: scopes.home === true,
+        list: scopes.list === true,
+        profile: scopes.profile === true,
         status: scopes.status !== false,
       },
       lists,

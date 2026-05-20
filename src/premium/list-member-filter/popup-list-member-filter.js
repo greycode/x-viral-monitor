@@ -9,7 +9,7 @@
   const DEFAULTS = {
     enabled: false,
     ttlMs: 24 * 60 * 60 * 1000,
-    scopes: { home: true, list: true, profile: true, status: true },
+    scopes: { home: false, list: false, profile: false, status: true },
     lists: [],
   };
   const LIMITS = globalThis.__xvmListMemberSource?.LIMITS || {
@@ -47,9 +47,9 @@
     out.ttlMs = Number.isFinite(raw.ttlMs) ? raw.ttlMs : DEFAULTS.ttlMs;
     if (raw.scopes && typeof raw.scopes === 'object') {
       out.scopes = {
-        home: raw.scopes.home !== false,
-        list: raw.scopes.list !== false,
-        profile: raw.scopes.profile !== false,
+        home: raw.scopes.home === true,
+        list: raw.scopes.list === true,
+        profile: raw.scopes.profile === true,
         status: raw.scopes.status !== false,
       };
     }
@@ -69,9 +69,16 @@
       url,
       name: String(raw.name || listId || url).trim(),
       screenName: String(raw.screenName || raw.ownerScreenName || '').trim().replace(/^@+/, '').toLowerCase(),
+      ownerName: String(raw.ownerName || '').trim(),
+      ownerUserId: String(raw.ownerUserId || '').trim(),
+      description: String(raw.description || '').trim(),
+      mode: String(raw.mode || '').trim(),
+      subscriberCount: Number.isFinite(raw.subscriberCount) ? raw.subscriberCount : 0,
       enabled: raw.enabled !== false,
       members: Array.isArray(raw.members) ? raw.members : [],
+      expectedMemberCount: Number.isFinite(raw.expectedMemberCount) ? raw.expectedMemberCount : 0,
       fetchedAt: Number.isFinite(raw.fetchedAt) ? raw.fetchedAt : 0,
+      fetchDurationMs: Number.isFinite(raw.fetchDurationMs) ? raw.fetchDurationMs : 0,
       ttlMs: Number.isFinite(raw.ttlMs) ? raw.ttlMs : DEFAULTS.ttlMs,
       fetchStatus: ['ready', 'fetching', 'error', 'empty', 'stale'].includes(raw.fetchStatus) ? raw.fetchStatus : (raw.members?.length ? 'ready' : 'empty'),
       source: raw.source ? String(raw.source) : '',
@@ -123,6 +130,13 @@
           <span class="slider"></span>
         </span>
       </label>
+      <div class="rf-scope" id="lf-scope">
+        <div class="rf-scope-title" data-k="lfScopeLegend"></div>
+        <label><span data-k="lfScopeHome"></span><span class="switch"><input type="checkbox" id="lf-scope-home"><span class="slider"></span></span></label>
+        <label><span data-k="lfScopeList"></span><span class="switch"><input type="checkbox" id="lf-scope-list"><span class="slider"></span></span></label>
+        <label><span data-k="lfScopeProfile"></span><span class="switch"><input type="checkbox" id="lf-scope-profile"><span class="slider"></span></span></label>
+        <label><span data-k="lfScopeStatus"></span><span class="switch"><input type="checkbox" id="lf-scope-status"><span class="slider"></span></span></label>
+      </div>
       <label class="rf-row" for="lf-list-input">
         <span data-k="lfInputLabel"></span>
         <input id="lf-list-input" type="text" placeholder="https://x.com/i/lists/1234567890" />
@@ -132,6 +146,14 @@
         <button type="button" id="lf-save" class="rf-btn-ghost" data-k="rfSave"></button>
       </div>
       <p class="rf-rule-hint" data-k="lfCaptureHint"></p>
+      <div id="lf-progress" class="rf-locked-hint" hidden>
+        <span aria-hidden="true">...</span>
+        <span id="lf-progress-text" data-k="lfProgressIdle"></span>
+        <div style="height:4px;margin-top:6px;border-radius:999px;background:var(--surface-3);overflow:hidden">
+          <span id="lf-progress-bar" style="display:block;height:100%;width:0%;background:var(--accent);transition:width 160ms"></span>
+        </div>
+      </div>
+      <div id="lf-summary" class="rf-rule-hint"></div>
       <ul id="lf-list" class="col-list" aria-live="polite"></ul>
       <div class="rf-msg" id="lf-msg"></div>
     `;
@@ -141,6 +163,17 @@
 
   function memberCount(lists) {
     return (lists || []).reduce((n, l) => n + (Array.isArray(l.members) ? l.members.length : 0), 0);
+  }
+
+  function uniqueMemberCount(lists) {
+    const seen = new Set();
+    for (const list of lists || []) {
+      for (const m of Array.isArray(list.members) ? list.members : []) {
+        const key = m.userId || m.id || m.screenName || m.handle || m.username;
+        if (key) seen.add(String(key).toLowerCase());
+      }
+    }
+    return seen.size;
   }
 
   function isListStale(list, now = Date.now()) {
@@ -184,24 +217,93 @@
     }
   }
 
+  function readScopes(section) {
+    return {
+      home: section.querySelector('#lf-scope-home').checked,
+      list: section.querySelector('#lf-scope-list').checked,
+      profile: section.querySelector('#lf-scope-profile').checked,
+      status: section.querySelector('#lf-scope-status').checked,
+    };
+  }
+
+  function writeScopes(section, scopes) {
+    section.querySelector('#lf-scope-home').checked = scopes.home === true;
+    section.querySelector('#lf-scope-list').checked = scopes.list === true;
+    section.querySelector('#lf-scope-profile').checked = scopes.profile === true;
+    section.querySelector('#lf-scope-status').checked = scopes.status !== false;
+  }
+
+  function setProgress(section, state) {
+    const box = section.querySelector('#lf-progress');
+    const text = section.querySelector('#lf-progress-text');
+    const bar = section.querySelector('#lf-progress-bar');
+    if (!box || !text) return;
+    if (!state) {
+      box.hidden = true;
+      text.textContent = '';
+      if (bar) bar.style.width = '0%';
+      return;
+    }
+    box.hidden = false;
+    const expected = state.expected ? ` / ${state.expected}` : ` / ${t('lfLimitLabel', state.maxMembers || LIMITS.maxMembersPerList)}`;
+    if (bar) {
+      const denom = state.expected || state.maxMembers || LIMITS.maxMembersPerList;
+      const pct = state.message ? 100 : Math.max(8, Math.min(96, Math.round(((state.members || 0) / denom) * 100)));
+      bar.style.width = `${pct}%`;
+    }
+    text.textContent = state.message || t('lfProgressFetching', state.members || 0, expected, state.page || 1);
+  }
+
+  function classifyErrorMessage(e) {
+    const reason = e?.reason || '';
+    if (reason === 'open-x') return t('lfErrOpenX');
+    if (reason === 'auth') return t('lfErrAuth');
+    if (reason === 'rate-limit') return t('lfErrRateLimit');
+    if (reason === 'private') return t('lfErrPrivate');
+    return e?.message || String(e);
+  }
+
+  function renderSummary(section, settings) {
+    const el = section.querySelector('#lf-summary');
+    if (!el) return;
+    el.textContent = t('lfSummary', settings.lists.length, memberCount(settings.lists), uniqueMemberCount(settings.lists));
+  }
+
   function renderList(section, settings) {
     const ul = section.querySelector('#lf-list');
     ul.innerHTML = '';
+    renderSummary(section, settings);
     settings.lists.forEach((list, idx) => {
       const li = document.createElement('li');
       li.dataset.listId = list.listId;
       li.style.alignItems = 'flex-start';
+      li.style.flexDirection = 'column';
+      li.style.gap = '6px';
       const label = document.createElement('div');
-      label.style.flex = '1';
+      label.style.width = '100%';
       const title = document.createElement('div');
-      title.textContent = `${list.name || list.listId || list.url} · ${list.members.length} ${t('lfMembers')}`;
+      title.style.fontWeight = '700';
+      title.textContent = list.name || list.listId || list.url;
       const meta = document.createElement('div');
       meta.className = 'ft-desc';
+      const owner = list.screenName
+        ? `${list.ownerName ? `${list.ownerName} ` : ''}@${list.screenName}`
+        : t('lfUnknownOwner');
+      const expected = list.expectedMemberCount ? ` / ${list.expectedMemberCount}` : '';
+      const duration = list.fetchDurationMs ? ` · ${t('lfFetchDuration', Math.round(list.fetchDurationMs / 1000))}` : '';
+      const desc = list.description ? ` · ${list.description}` : '';
       meta.textContent = list.lastError
         ? `${statusText(list)} · ${list.lastError}`
-        : `${statusText(list)}${list.fetchedAt ? ` · ${new Date(list.fetchedAt).toLocaleString()}` : ''}`;
+        : `${t('lfOwner', owner)} · ${t('lfMemberCount', list.members.length, expected)} · ${statusText(list)}${desc}${list.fetchedAt ? ` · ${t('lfFetchedAt', new Date(list.fetchedAt).toLocaleString())}` : ''}${duration}`;
       label.append(title, meta);
 
+      const row = document.createElement('div');
+      row.style.display = 'flex';
+      row.style.alignItems = 'center';
+      row.style.justifyContent = 'space-between';
+      row.style.width = '100%';
+      row.style.gap = '8px';
+      row.append(label);
       const refresh = document.createElement('button');
       refresh.type = 'button';
       refresh.className = 'ft-lb-reset-btn';
@@ -218,7 +320,8 @@
       actions.style.display = 'flex';
       actions.style.gap = '4px';
       actions.append(refresh, del);
-      li.append(label, actions);
+      row.append(actions);
+      li.append(row);
       if (list.lastError) li.title = list.lastError;
       ul.appendChild(li);
     });
@@ -236,6 +339,7 @@
     if (!section) return;
     let settings = normalize(await storageGet(STORAGE_KEY, DEFAULTS));
     section.querySelector('#lf-enabled').checked = settings.enabled;
+    writeScopes(section, settings.scopes);
     renderList(section, settings);
 
     const { tier } = await resolveTier();
@@ -251,7 +355,10 @@
       if (replaceIndex < 0 && existingLists.length >= LIMITS.maxLists) {
         throw new Error(t('lfLimitLists', LIMITS.maxLists));
       }
-      const result = await source.fetchListMembers(parsed, { maxMembers: LIMITS.maxMembersPerList });
+      const result = await source.fetchListMembers(parsed, {
+        maxMembers: LIMITS.maxMembersPerList,
+        onProgress: (progress) => setProgress(section, progress),
+      });
       const nextTotal = memberCount(existingLists) + result.members.length;
       if (nextTotal > LIMITS.maxMembersTotal) {
         throw new Error(t('lfLimitMembers', LIMITS.maxMembersTotal));
@@ -259,7 +366,13 @@
       return normalizeList({
         ...parsed,
         ...result,
-        name: result.name || parsed.name,
+        name: result.name || `List ${result.listId || parsed.listId}`,
+        screenName: result.screenName || '',
+        ownerName: result.ownerName || '',
+        ownerUserId: result.ownerUserId || '',
+        description: result.description || '',
+        mode: result.mode || '',
+        subscriberCount: result.subscriberCount || 0,
         enabled: parsed.enabled !== false,
         fetchStatus: 'ready',
         ttlMs: parsed.ttlMs || DEFAULTS.ttlMs,
@@ -279,9 +392,10 @@
         setMessage(section, t('lfLimitLists', LIMITS.maxLists), 'err');
         return;
       }
-      busy = true;
-      setBusy(section, true);
-      setMessage(section, t('lfFetching'), 'ok');
+        busy = true;
+        setBusy(section, true);
+      setMessage(section, t('lfFetchingLong'), 'ok');
+      setProgress(section, { members: 0, page: 1, maxMembers: LIMITS.maxMembersPerList });
       try {
         const ready = await fetchAndStore(parsed, duplicate);
         const lists = duplicate >= 0 ? settings.lists.map((l, i) => i === duplicate ? ready : l) : [...settings.lists, ready];
@@ -290,13 +404,16 @@
         renderList(section, settings);
         await storageSet({ [STORAGE_KEY]: settings });
         setMessage(section, t('lfFetchOk', ready.members.length), 'ok');
+        setProgress(section, { message: t('lfFetchDone', ready.members.length, Math.round((ready.fetchDurationMs || 0) / 1000)) });
       } catch (e) {
-        const failed = normalizeList({ ...parsed, fetchStatus: 'error', lastError: e.message || String(e) });
+        const message = classifyErrorMessage(e);
+        const failed = normalizeList({ ...parsed, fetchStatus: 'error', lastError: message });
         const lists = duplicate >= 0 ? settings.lists.map((l, i) => i === duplicate ? failed : l) : [...settings.lists, failed];
         settings = normalize({ ...settings, lists });
         renderList(section, settings);
         await storageSet({ [STORAGE_KEY]: settings });
-        setMessage(section, t('lfFetchFailed', e.message || String(e)), 'err');
+        setMessage(section, t('lfFetchFailed', message), 'err');
+        setProgress(section, { message: t('lfFetchFailed', message) });
       } finally {
         busy = false;
         setBusy(section, false);
@@ -321,21 +438,25 @@
       if (btn.dataset.action === 'refresh') {
         busy = true;
         setBusy(section, true);
-        setMessage(section, t('lfFetching'), 'ok');
+        setMessage(section, t('lfFetchingLong'), 'ok');
+        setProgress(section, { members: 0, page: 1, maxMembers: LIMITS.maxMembersPerList });
         try {
           const ready = await fetchAndStore(settings.lists[idx], idx);
           settings = normalize({ ...settings, lists: settings.lists.map((l, i) => i === idx ? ready : l) });
           renderList(section, settings);
           await storageSet({ [STORAGE_KEY]: settings });
           setMessage(section, t('lfFetchOk', ready.members.length), 'ok');
+          setProgress(section, { message: t('lfFetchDone', ready.members.length, Math.round((ready.fetchDurationMs || 0) / 1000)) });
         } catch (e) {
+          const message = classifyErrorMessage(e);
           settings = normalize({
             ...settings,
-            lists: settings.lists.map((l, i) => i === idx ? normalizeList({ ...l, fetchStatus: 'error', lastError: e.message || String(e) }) : l),
+            lists: settings.lists.map((l, i) => i === idx ? normalizeList({ ...l, fetchStatus: 'error', lastError: message }) : l),
           });
           renderList(section, settings);
           await storageSet({ [STORAGE_KEY]: settings });
-          setMessage(section, t('lfFetchFailed', e.message || String(e)), 'err');
+          setMessage(section, t('lfFetchFailed', message), 'err');
+          setProgress(section, { message: t('lfFetchFailed', message) });
         } finally {
           busy = false;
           setBusy(section, false);
@@ -344,7 +465,7 @@
     });
 
     section.querySelector('#lf-save').addEventListener('click', async () => {
-      settings = normalize({ ...settings, enabled: section.querySelector('#lf-enabled').checked });
+      settings = normalize({ ...settings, enabled: section.querySelector('#lf-enabled').checked, scopes: readScopes(section) });
       if (settings.enabled && !hasReadyMembers(settings)) {
         settings.enabled = false;
         section.querySelector('#lf-enabled').checked = false;
@@ -366,6 +487,7 @@
         if (STORAGE_KEY in changes) {
           settings = normalize(changes[STORAGE_KEY].newValue);
           section.querySelector('#lf-enabled').checked = settings.enabled;
+          writeScopes(section, settings.scopes);
           renderList(section, settings);
         }
       });

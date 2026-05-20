@@ -222,7 +222,8 @@ function listMemberFetchHeaders() {
 }
 
 function writeListMemberFetchResponse(response) {
-  safeChromeCall(() => chrome.storage.local.set({ [LIST_MEMBER_FETCH_RESPONSE_KEY]: response }));
+  const key = response.responseKey || LIST_MEMBER_FETCH_RESPONSE_KEY;
+  safeChromeCall(() => chrome.storage.local.set({ [key]: response }));
 }
 
 function handleListMemberFetchRequest(request) {
@@ -230,11 +231,15 @@ function handleListMemberFetchRequest(request) {
   if (!request.requestId || request.requestId === lastListMemberFetchRequestId) return;
   lastListMemberFetchRequestId = request.requestId;
   const url = String(request.url || '');
-  if (!/^https:\/\/x\.com\/i\/api\/graphql\/[^/]+\/ListMembers\?/.test(url)) {
+  const op = String(request.op || 'ListMembers');
+  const allowed = (op === 'ListMembers' && /^https:\/\/x\.com\/i\/api\/graphql\/[^/]+\/ListMembers\?/.test(url))
+    || (op === 'ListByRestId' && /^https:\/\/x\.com\/i\/api\/graphql\/[^/]+\/ListByRestId\?/.test(url));
+  if (!allowed) {
     writeListMemberFetchResponse({
       requestId: request.requestId,
+      responseKey: request.responseKey,
       ok: false,
-      error: 'Unsupported ListMembers fetch URL',
+      error: 'Unsupported List GraphQL fetch URL',
       completedAt: Date.now(),
     });
     return;
@@ -248,6 +253,7 @@ function handleListMemberFetchRequest(request) {
     try { data = await res.json(); } catch (_) {}
     writeListMemberFetchResponse({
       requestId: request.requestId,
+      responseKey: request.responseKey,
       ok: res.ok,
       status: res.status,
       data,
@@ -263,6 +269,7 @@ function handleListMemberFetchRequest(request) {
   }).catch((e) => {
     writeListMemberFetchResponse({
       requestId: request.requestId,
+      responseKey: request.responseKey,
       ok: false,
       error: e.message || String(e),
       completedAt: Date.now(),
@@ -336,7 +343,7 @@ window.addEventListener('message', (event) => {
       chrome.storage.local.get({ [LF_KEY]: null }, (items) => {
         const settings = items[LF_KEY] && typeof items[LF_KEY] === 'object'
           ? items[LF_KEY]
-          : { enabled: false, scopes: { home: true, list: true, profile: true, status: true }, lists: [] };
+          : { enabled: false, scopes: { home: false, list: false, profile: false, status: true }, lists: [] };
         window.postMessage({ type: 'XVM_LIST_MEMBER_FILTER_UPDATE', settings }, '*');
       });
     });
@@ -497,7 +504,7 @@ safeChromeCall(() => {
     if (areaName === 'local' && changes.xvm_list_member_filter_v1) {
       const settings = changes.xvm_list_member_filter_v1.newValue && typeof changes.xvm_list_member_filter_v1.newValue === 'object'
         ? changes.xvm_list_member_filter_v1.newValue
-        : { enabled: false, scopes: { home: true, list: true, profile: true, status: true }, lists: [] };
+        : { enabled: false, scopes: { home: false, list: false, profile: false, status: true }, lists: [] };
       window.postMessage({ type: 'XVM_LIST_MEMBER_FILTER_UPDATE', settings }, '*');
       return;
     }

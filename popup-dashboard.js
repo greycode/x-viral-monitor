@@ -31,7 +31,7 @@
   function setTab(name) {
     if (!TABS.includes(name)) name = 'filter';
     document.body.dataset.tab = name;
-    document.querySelectorAll('[role="tab"]').forEach((btn) => {
+    document.querySelectorAll('[role="tab"][data-tab]').forEach((btn) => {
       btn.setAttribute('aria-selected', String(btn.dataset.tab === name));
     });
     document.querySelectorAll('[data-tab-panel]').forEach((p) => {
@@ -50,7 +50,7 @@
   }
 
   function wireTabButtons() {
-    document.querySelectorAll('[role="tab"]').forEach((btn) => {
+    document.querySelectorAll('[role="tab"][data-tab]').forEach((btn) => {
       btn.addEventListener('click', () => setTab(btn.dataset.tab));
     });
   }

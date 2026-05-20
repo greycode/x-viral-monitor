@@ -196,6 +196,10 @@ describe('#45 popup-dashboard.js tab router', () => {
   it('wires aria-selected updates on tab click', () => {
     expect(/aria-selected/.test(dashJs)).toBe(true);
   });
+  it('scopes the main tab router to top-level data-tab buttons only', () => {
+    expect(/querySelectorAll\(\s*['"]\[role="tab"\]\[data-tab\]['"]\s*\)/.test(dashJs)).toBe(true);
+    expect(/querySelectorAll\(\s*['"]\[role="tab"\]['"]\s*\)/.test(dashJs)).toBe(false);
+  });
   it('listens for xvm-pro-nav (activate link click)', () => {
     expect(/xvm-pro-nav/.test(dashJs)).toBe(true);
     expect(/['"]activate['"]/.test(dashJs)).toBe(true);
@@ -268,6 +272,24 @@ describe('#59 popup polish controls', () => {
 
   it('keeps leaderboard column visibility as real checkboxes for multi-select', () => {
     expect(/<input type="checkbox" \$\{col\.visible \? 'checked' : ''\}>/.test(popupJs)).toBe(true);
+  });
+});
+
+describe('#69/#72 user self-test polish', () => {
+  it('lets the List URL input fill the filter card without forcing horizontal overflow', () => {
+    expect(/\.lf-section\s*\{[\s\S]*?min-width:\s*0/.test(html)).toBe(true);
+    expect(/\.lf-section\s+#lf-list-input\s*\{[\s\S]*?width:\s*100%/.test(html)).toBe(true);
+    expect(/\.lf-section\s+#lf-list-input\s*\{[\s\S]*?max-width:\s*100%/.test(html)).toBe(true);
+    expect(/\.lf-section\s+#lf-list-input\s*\{[\s\S]*?min-width:\s*0/.test(html)).toBe(true);
+    expect(/\.lf-section\s+#lf-list-input\s*\{[\s\S]*?box-sizing:\s*border-box/.test(html)).toBe(true);
+    expect(/\.lf-section\s+#lf-list-input\s*\{[\s\S]*?text-overflow:\s*ellipsis/.test(html)).toBe(true);
+  });
+
+  it('gives the Short/Long rate-filter sub-tabs a visible selected + keyboard focus state', () => {
+    expect(/\.rf-subcard\s+\.sub-tab-btn\[aria-selected="true"\]\s*\{[\s\S]*?background:\s*var\(--accent\)\s*!important/.test(html)).toBe(true);
+    expect(/\.rf-subcard\s+\.sub-tab-btn\[aria-selected="true"\]\s*\{[\s\S]*?color:\s*#0b1120\s*!important/.test(html)).toBe(true);
+    expect(/\.rf-subcard\s+\.sub-tab-btn:hover\s*\{[\s\S]*?background:\s*var\(--surface\)\s*!important/.test(html)).toBe(true);
+    expect(/\.rf-subcard\s+\.sub-tab-btn:focus-visible\s*\{[\s\S]*?outline:\s*2px\s+solid\s+var\(--accent\)/.test(html)).toBe(true);
   });
 });
 

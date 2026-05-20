@@ -9,6 +9,7 @@
   const REQUEST_KEY = 'xvm_list_member_fetch_request_v1';
   const RESPONSE_KEY = 'xvm_list_member_fetch_response_v1';
   const QUERY_ID = {
+    ListByRestId: 't9AbdyHaJVfjL9jsODwgpQ',
     ListMembers: 'l90-8FD7I3dxXqJfyxSEeA',
     ListLatestTweetsTimeline: '7UuJsFvnWuZo0HmxrzU42Q',
   };
@@ -62,6 +63,15 @@
     responsive_web_enhance_cards_enabled: false,
   });
 
+  const LIST_METADATA_FEATURES = Object.freeze({
+    profile_label_improvements_pcf_label_in_post_enabled: true,
+    responsive_web_profile_redirect_enabled: false,
+    rweb_tipjar_consumption_enabled: false,
+    verified_phone_label_enabled: false,
+    responsive_web_graphql_skip_user_profile_image_extensions_enabled: false,
+    responsive_web_graphql_timeline_navigation_enabled: true,
+  });
+
   function storageSet(obj) {
     return new Promise((resolve, reject) => {
       try {
@@ -105,6 +115,13 @@
     return `https://x.com/i/api/graphql/${QUERY_ID.ListMembers}/ListMembers?` + new URLSearchParams({
       variables: JSON.stringify(variables),
       features: JSON.stringify(LIST_FEATURES),
+    }).toString();
+  }
+
+  function buildListMetadataUrl({ listId }) {
+    return `https://x.com/i/api/graphql/${QUERY_ID.ListByRestId}/ListByRestId?` + new URLSearchParams({
+      variables: JSON.stringify({ listId: String(listId) }),
+      features: JSON.stringify(LIST_METADATA_FEATURES),
     }).toString();
   }
 
@@ -165,23 +182,61 @@
         cursor = val;
       }
     });
-    return { members, cursor };
+    return { members, cursor, metadata: parseListMetadata(data) };
   }
 
-  function requestGraphQL(url, timeoutMs = REQUEST_TIMEOUT_MS) {
+  function parseListMetadata(data) {
+    const list = data?.data?.list || data?.data?.list_results?.result || {};
+    let name = String(list?.name || list?.core?.name || list?.legacy?.name || list?.list?.name || '').trim();
+    let screenName = normalizeScreenName(
+      list?.user_results?.result?.core?.screen_name
+      || list?.user_results?.result?.legacy?.screen_name
+      || list?.user?.core?.screen_name
+      || list?.user?.legacy?.screen_name
+      || list?.owner?.core?.screen_name
+      || list?.owner?.legacy?.screen_name
+    );
+    let memberCount = Number(list?.member_count || list?.members_count || list?.legacy?.member_count || list?.core?.member_count);
+    // Do not deep-walk members_timeline: ListMembers often returns only
+    // member UserCells, and deep scanning would mislabel the first member as
+    // the List name/owner.
+    return { name, screenName, memberCount: Number.isFinite(memberCount) ? memberCount : 0 };
+  }
+
+  function parseListByRestIdMetadata(data) {
+    const list = data?.data?.list || data?.data?.list_results?.result || {};
+    const owner = list?.user_results?.result || list?.user?.result || list?.user || {};
+    const ownerCore = owner.core || {};
+    const ownerLegacy = owner.legacy || {};
+    const memberCount = Number(list?.member_count || list?.members_count || list?.legacy?.member_count || list?.core?.member_count);
+    const subscriberCount = Number(list?.subscriber_count || list?.subscribers_count || list?.legacy?.subscriber_count);
+    return {
+      name: String(list?.name || list?.core?.name || list?.legacy?.name || '').trim(),
+      description: String(list?.description || list?.core?.description || list?.legacy?.description || '').trim(),
+      screenName: normalizeScreenName(ownerCore.screen_name || ownerLegacy.screen_name),
+      ownerName: String(ownerCore.name || ownerLegacy.name || '').trim(),
+      ownerUserId: String(owner.rest_id || ownerLegacy.id_str || '').trim(),
+      mode: String(list?.mode || list?.legacy?.mode || '').trim(),
+      memberCount: Number.isFinite(memberCount) ? memberCount : 0,
+      subscriberCount: Number.isFinite(subscriberCount) ? subscriberCount : 0,
+    };
+  }
+
+  function requestGraphQL(url, op = 'ListMembers', timeoutMs = REQUEST_TIMEOUT_MS) {
     return new Promise((resolve, reject) => {
       const requestId = randomId();
+      const responseKey = `${RESPONSE_KEY}_${requestId}`;
       let done = false;
       const cleanup = () => {
         if (done) return;
         done = true;
         clearTimeout(timer);
         try { chrome.storage.onChanged.removeListener(onChanged); } catch (_) {}
-        storageRemove([REQUEST_KEY, RESPONSE_KEY]);
+        storageRemove([responseKey]);
       };
       const onChanged = (changes, area) => {
         if (area !== 'local') return;
-        const response = changes[RESPONSE_KEY]?.newValue;
+        const response = changes[responseKey]?.newValue || changes[RESPONSE_KEY]?.newValue;
         if (!response || response.requestId !== requestId) return;
         cleanup();
         if (!response.ok) {
@@ -203,7 +258,8 @@
       storageSet({
         [REQUEST_KEY]: {
           requestId,
-          op: 'ListMembers',
+          responseKey,
+          op,
           url,
           createdAt: Date.now(),
         },
@@ -212,6 +268,21 @@
         reject(e);
       });
     });
+  }
+
+  async function fetchListMetadata(listId, timeoutMs) {
+    const url = buildListMetadataUrl({ listId });
+    const response = await requestGraphQL(url, 'ListByRestId', timeoutMs || REQUEST_TIMEOUT_MS);
+    return parseListByRestIdMetadata(response.data);
+  }
+
+  function classifyFetchError(error) {
+    const msg = String(error?.message || error || '');
+    if (/rate limit|429/i.test(msg)) return 'rate-limit';
+    if (/401|403|auth|csrf|login/i.test(msg)) return 'auth';
+    if (/private|not authorized/i.test(msg)) return 'private';
+    if (/Open an X\.com tab|timeout/i.test(msg)) return 'open-x';
+    return 'network';
   }
 
   async function fetchListMembers(input, options = {}) {
@@ -224,31 +295,80 @@
     let cursor = '';
     let pages = 0;
     let rateLimit = null;
+    let metadata = { name: '', screenName: '', ownerName: '', ownerUserId: '', description: '', mode: '', memberCount: 0, subscriberCount: 0 };
+    const startedAt = Date.now();
+    options.onProgress?.({ phase: 'start', listId, members: 0, page: 0, maxMembers });
+    const metadataPromise = fetchListMetadata(listId, options.timeoutMs || REQUEST_TIMEOUT_MS).catch(() => null);
 
-    do {
-      const url = buildListMembersUrl({ listId, cursor });
-      const response = await requestGraphQL(url, options.timeoutMs || REQUEST_TIMEOUT_MS);
-      rateLimit = response.rateLimit || response.rate_limit || rateLimit;
-      const page = parseListMembersResponse(response.data);
-      pages += 1;
-      for (const m of page.members) {
-        const key = m.userId || m.screenName;
-        if (!key || seen.has(key)) continue;
-        seen.add(key);
-        members.push(m);
+    try {
+      do {
+        const url = buildListMembersUrl({ listId, cursor });
+        const response = await requestGraphQL(url, 'ListMembers', options.timeoutMs || REQUEST_TIMEOUT_MS);
+        rateLimit = response.rateLimit || response.rate_limit || rateLimit;
+        const page = parseListMembersResponse(response.data);
+        if (page.metadata?.name || page.metadata?.screenName || page.metadata?.memberCount) {
+          metadata = {
+            name: page.metadata.name || metadata.name,
+            screenName: page.metadata.screenName || metadata.screenName,
+            memberCount: page.metadata.memberCount || metadata.memberCount,
+          };
+        }
+        pages += 1;
+        let addedThisPage = 0;
+        for (const m of page.members) {
+          const key = m.userId || m.screenName;
+          if (!key || seen.has(key)) continue;
+          seen.add(key);
+          members.push(m);
+          addedThisPage += 1;
+          if (members.length >= maxMembers) break;
+        }
+        options.onProgress?.({
+          phase: cursor ? 'page' : 'first-page',
+          listId,
+          members: members.length,
+          expected: metadata.memberCount || 0,
+          page: pages,
+          maxMembers,
+        });
+        cursor = page.cursor || '';
+        if (addedThisPage === 0 && pages > 1) break;
         if (members.length >= maxMembers) break;
-      }
-      cursor = page.cursor || '';
-      if (members.length >= maxMembers) break;
-    } while (cursor && pages < maxPages);
+      } while (cursor && pages < maxPages);
+    } catch (e) {
+      e.reason = classifyFetchError(e);
+      throw e;
+    }
 
     if (!members.length) throw new Error('List members were not returned. Open the List page on X and retry.');
+    const listMetadata = await metadataPromise;
+    if (listMetadata) {
+      metadata = {
+        ...metadata,
+        name: listMetadata.name || metadata.name,
+        screenName: listMetadata.screenName || metadata.screenName,
+        ownerName: listMetadata.ownerName || metadata.ownerName,
+        ownerUserId: listMetadata.ownerUserId || metadata.ownerUserId,
+        description: listMetadata.description || metadata.description,
+        mode: listMetadata.mode || metadata.mode,
+        memberCount: listMetadata.memberCount || metadata.memberCount,
+        subscriberCount: listMetadata.subscriberCount || metadata.subscriberCount,
+      };
+    }
     return {
       listId,
       url: input?.url || listUrl(listId),
-      name: input?.name || `List ${listId}`,
+      name: metadata.name || `List ${listId}`,
+      screenName: metadata.screenName || '',
+      ownerName: metadata.ownerName || '',
+      ownerUserId: metadata.ownerUserId || '',
+      description: metadata.description || '',
+      mode: metadata.mode || '',
+      subscriberCount: metadata.subscriberCount || 0,
+      expectedMemberCount: metadata.memberCount || members.length,
       members,
       fetchedAt: Date.now(),
+      fetchDurationMs: Date.now() - startedAt,
       source: 'graphql',
       pages,
       rateLimit,
@@ -260,11 +380,17 @@
     RESPONSE_KEY,
     QUERY_ID,
     LIST_FEATURES,
+    LIST_METADATA_FEATURES,
     LIMITS,
     extractListId,
     buildListMembersUrl,
+    buildListMetadataUrl,
     parseListMembersResponse,
+    parseListMetadata,
+    parseListByRestIdMetadata,
+    classifyFetchError,
     requestGraphQL,
+    fetchListMetadata,
     fetchListMembers,
   };
 })();

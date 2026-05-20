@@ -72,9 +72,8 @@ describe('#60 Pro M2 — X List member filter PoC', () => {
 
   it('keeps scope hooks for Home/List/Profile/Status detail', () => {
     expect(filter).toMatch(/getScopeFromPath/);
-    for (const scope of ['home', 'list', 'profile', 'status']) {
-      expect(filter).toMatch(new RegExp(`\\b${scope}:\\s*true\\b`));
-    }
+    expect(filter).toMatch(/scopes:\s*\{\s*home:\s*false,\s*list:\s*false,\s*profile:\s*false,\s*status:\s*true\s*\}/);
+    expect(bridge).toMatch(/scopes:\s*\{\s*home:\s*false,\s*list:\s*false,\s*profile:\s*false,\s*status:\s*true\s*\}/);
     expect(filter).toMatch(/\/\^\\\/i\\\/lists\\\//);
     expect(filter).toMatch(/\/\^\\\/\[\^\/\]\+\\\/status\\\/\\d\+/);
   });
@@ -118,8 +117,11 @@ describe('#60 Pro M2 — X List member filter PoC', () => {
 
   it('member-source implements live ListMembers GraphQL with Codex-captured queryId and features', () => {
     expect(source).toMatch(/QUERY_ID\s*=\s*\{[\s\S]*ListMembers:\s*['"]l90-8FD7I3dxXqJfyxSEeA['"]/);
+    expect(source).toMatch(/ListByRestId:\s*['"]t9AbdyHaJVfjL9jsODwgpQ['"]/);
     expect(source).toMatch(/ListLatestTweetsTimeline:\s*['"]7UuJsFvnWuZo0HmxrzU42Q['"]/);
     expect(source).toMatch(/buildListMembersUrl/);
+    expect(source).toMatch(/buildListMetadataUrl/);
+    expect(source).toMatch(/\/ListByRestId\?/);
     expect(source).toMatch(/\/ListMembers\?/);
     expect(source).not.toMatch(/fieldToggles/);
     for (const flag of [
@@ -130,6 +132,8 @@ describe('#60 Pro M2 — X List member filter PoC', () => {
     ]) {
       expect(source).toContain(flag);
     }
+    expect(source).toMatch(/LIST_METADATA_FEATURES/);
+    expect(source).toContain('verified_phone_label_enabled');
   });
 
   it('member-source parses the ListMembers response path and user fields from bb-browser evidence', () => {
@@ -139,16 +143,29 @@ describe('#60 Pro M2 — X List member filter PoC', () => {
     expect(source).toMatch(/rest_id/);
     expect(source).toMatch(/core\.screen_name/);
     expect(source).toMatch(/core\.name/);
+    expect(source).toMatch(/parseListMetadata/);
+    expect(source).toMatch(/parseListByRestIdMetadata/);
+    expect(source).toMatch(/ownerName/);
+    expect(source).toMatch(/description/);
+    expect(source).toMatch(/subscriberCount/);
+    expect(source).toMatch(/member_count|members_count/);
+    expect(source).toMatch(/Do not deep-walk members_timeline/);
+    expect(source).toMatch(/name:\s*metadata\.name\s*\|\|\s*`List \$\{listId\}`/);
+    expect(source).toMatch(/screenName:\s*metadata\.screenName\s*\|\|\s*['"]['"]/);
+    expect(source).not.toMatch(/name:\s*metadata\.name\s*\|\|\s*input\?\.name/);
+    expect(source).toMatch(/expectedMemberCount/);
     expect(source).toMatch(/cursorType/);
   });
 
   it('fetches members through an extension-owned storage request queue, not page postMessage SET', () => {
     expect(source).toMatch(/REQUEST_KEY\s*=\s*['"]xvm_list_member_fetch_request_v1['"]/);
     expect(source).toMatch(/RESPONSE_KEY\s*=\s*['"]xvm_list_member_fetch_response_v1['"]/);
+    expect(source).toMatch(/responseKey\s*=\s*`\$\{RESPONSE_KEY\}_\$\{requestId\}`/);
     expect(source).toMatch(/requestGraphQL/);
     expect(source).toMatch(/chrome\.storage\.local\.set/);
     expect(bridge).toMatch(/LIST_MEMBER_FETCH_REQUEST_KEY\s*=\s*['"]xvm_list_member_fetch_request_v1['"]/);
     expect(bridge).toMatch(/LIST_MEMBER_FETCH_RESPONSE_KEY\s*=\s*['"]xvm_list_member_fetch_response_v1['"]/);
+    expect(bridge).toMatch(/ListByRestId/);
     expect(bridge).toMatch(/credentials:\s*['"]include['"]/);
     expect(bridge).toMatch(/x-csrf-token/);
     expect(bridge).toMatch(/Bearer/);
@@ -163,6 +180,9 @@ describe('#60 Pro M2 — X List member filter PoC', () => {
     expect(popup).toMatch(/data-action="delete"|dataset\.action\s*=\s*['"]delete['"]/);
     expect(popup).toMatch(/hasReadyMembers/);
     expect(popup).toMatch(/settings\.enabled\s*=\s*false/);
+    expect(popup).toMatch(/readScopes/);
+    expect(popup).toMatch(/writeScopes/);
+    expect(popup).toMatch(/lf-scope-status/);
     expect(popup).toMatch(/maxLists:\s*5/);
     expect(popup).toMatch(/maxMembersPerList:\s*5000/);
     expect(popup).toMatch(/maxMembersTotal:\s*10000/);
@@ -180,13 +200,40 @@ describe('#60 Pro M2 — X List member filter PoC', () => {
     expect(popup).toMatch(/setBusy\(section,\s*false\)/);
   });
 
+  it('popup renders list owner/member table details, unique summary, and visible fetch progress', () => {
+    expect(popup).toMatch(/uniqueMemberCount/);
+    expect(popup).toMatch(/lf-summary/);
+    expect(popup).toMatch(/lfOwner/);
+    expect(popup).toMatch(/ownerName/);
+    expect(popup).toMatch(/description/);
+    expect(popup).toMatch(/subscriberCount/);
+    expect(popup).toMatch(/name:\s*result\.name\s*\|\|\s*`List \$\{result\.listId \|\| parsed\.listId\}`/);
+    expect(popup).toMatch(/screenName:\s*result\.screenName\s*\|\|\s*['"]['"]/);
+    expect(popup).not.toMatch(/name:\s*result\.name\s*\|\|\s*parsed\.name/);
+    expect(popup).toMatch(/lfMemberCount/);
+    expect(popup).toMatch(/lfFetchedAt/);
+    expect(popup).toMatch(/lfFetchDuration/);
+    expect(popup).toMatch(/setProgress/);
+    expect(popup).toMatch(/lf-progress/);
+    expect(popup).toMatch(/lf-progress-bar/);
+    expect(popup).toMatch(/lfLimitLabel/);
+    expect(popup).toMatch(/lfFetchingLong/);
+    expect(popup).toMatch(/onProgress/);
+    expect(popup).toMatch(/classifyErrorMessage/);
+    expect(popup).toMatch(/lfErrOpenX|lfErrAuth|lfErrRateLimit|lfErrPrivate/);
+  });
+
   it('popup i18n keys exist in all shipped locales', () => {
     const keys = [
       'lfTitle', 'lfLockedHint', 'lfEnabled', 'lfInputLabel', 'lfAdd',
+      'lfScopeLegend', 'lfScopeHome', 'lfScopeList', 'lfScopeProfile', 'lfScopeStatus',
       'lfCaptureHint', 'lfInvalidInput', 'lfAddedOk', 'lfMembers',
       'lfRefresh', 'lfDelete', 'lfFetching', 'lfFetchOk', 'lfFetchFailed',
+      'lfFetchingLong', 'lfProgressIdle', 'lfProgressFetching', 'lfLimitLabel', 'lfFetchDone',
+      'lfErrOpenX', 'lfErrAuth', 'lfErrRateLimit', 'lfErrPrivate',
       'lfSourceMissing', 'lfReady', 'lfStale', 'lfError', 'lfEmptyMembers',
       'lfDeletedOk', 'lfLimitLists', 'lfLimitMembers',
+      'lfSummary', 'lfOwner', 'lfUnknownOwner', 'lfMemberCount', 'lfFetchedAt', 'lfFetchDuration',
     ];
     for (const locale of ['en', 'zh_CN', 'ja']) {
       const messages = JSON.parse(readFileSync(resolve(repo, `_locales/${locale}/messages.json`), 'utf8'));
