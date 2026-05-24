@@ -1266,10 +1266,10 @@ function showLeaderboardListMemberHint(reason = 'not-ready') {
     : (i18n('contentLbListDisabledSub') || '先在 popup 添加 List 并抓成员');
   if (isFree) {
     const link = bubble.querySelector('.xvm-lb-upgrade-link');
-    link.textContent = i18n('contentLbHotMonthly') || '月度 $9';
+    link.textContent = i18n('contentLbHotMonthly') || '月度 $2.9';
     link.href = 'https://www.creem.io/payment/prod_7f7t9EHK3RJlOK37DWr7J';
     const btn = bubble.querySelector('.xvm-lb-upgrade-btn');
-    btn.textContent = i18n('contentLbHotAnnual') || '年度 $90 (省 17%)';
+    btn.textContent = i18n('contentLbHotAnnual') || '年度 $29 (省 17%)';
     btn.href = 'https://www.creem.io/payment/prod_69yTiXGXb04DKm46DNVbN9';
   }
   bubble.querySelector('.xvm-lb-upgrade-close').addEventListener('click', () => bubble.remove());
@@ -1295,10 +1295,10 @@ function showLeaderboardUpgradeBubble() {
   bubble.querySelector('.xvm-lb-upgrade-title span').textContent = i18n('contentLbHotProTitle') || '流速过滤是 Pro 功能';
   bubble.querySelector('.xvm-lb-upgrade-sub').textContent = i18n('contentLbHotProSub') || '隐藏低浏览量推文,保留真正在传播的内容';
   const link = bubble.querySelector('.xvm-lb-upgrade-link');
-  link.textContent = i18n('contentLbHotMonthly') || '月度 $9';
+  link.textContent = i18n('contentLbHotMonthly') || '月度 $2.9';
   link.href = 'https://www.creem.io/payment/prod_7f7t9EHK3RJlOK37DWr7J';
   const btn = bubble.querySelector('.xvm-lb-upgrade-btn');
-  btn.textContent = i18n('contentLbHotAnnual') || '年度 $90 (省 17%)';
+  btn.textContent = i18n('contentLbHotAnnual') || '年度 $29 (省 17%)';
   btn.href = 'https://www.creem.io/payment/prod_69yTiXGXb04DKm46DNVbN9';
   bubble.querySelector('.xvm-lb-upgrade-close').addEventListener('click', () => bubble.remove());
   const head = leaderboardEl.querySelector('.xvm-lb-head');

@@ -15,6 +15,7 @@
 
 (() => {
   const TABS = ['pro', 'filter', 'leaderboard', 'about'];
+  const ACTIVE_TAB_KEY = 'xvm_popup_active_tab';
 
   // Critical bug fix (Codex polish item 3): the previous t(key) signature
   // didn't forward substitution args, so chrome.i18n.getMessage was always
@@ -28,8 +29,32 @@
     return key;
   }
 
-  function setTab(name) {
+  function isValidTab(name) {
+    return TABS.includes(name);
+  }
+
+  function persistTab(name) {
+    if (!isValidTab(name)) return;
+    try { localStorage.setItem(ACTIVE_TAB_KEY, name); } catch (_) {}
+    try { chrome.storage.local.set({ [ACTIVE_TAB_KEY]: name }); } catch (_) {}
+  }
+
+  function markTabReady() {
+    document.body.dataset.tabReady = '1';
+  }
+
+  function readLocalTab() {
+    try {
+      const saved = localStorage.getItem(ACTIVE_TAB_KEY);
+      return isValidTab(saved) ? saved : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function setTab(name, opts = {}) {
     if (!TABS.includes(name)) name = 'filter';
+    const persist = opts.persist !== false;
     document.body.dataset.tab = name;
     document.querySelectorAll('[role="tab"][data-tab]').forEach((btn) => {
       btn.setAttribute('aria-selected', String(btn.dataset.tab === name));
@@ -38,6 +63,27 @@
       p.dataset.active = (p.dataset.tabPanel === name) ? '1' : '0';
     });
     window.scrollTo(0, 0);
+    if (persist) persistTab(name);
+  }
+
+  function loadInitialTab() {
+    const localTab = readLocalTab();
+    if (localTab) {
+      setTab(localTab, { persist: false });
+      markTabReady();
+    }
+    try {
+      chrome.storage.local.get({ [ACTIVE_TAB_KEY]: 'filter' }, (items) => {
+        const saved = items?.[ACTIVE_TAB_KEY];
+        const next = isValidTab(saved) ? saved : 'filter';
+        setTab(next, { persist: false });
+        try { localStorage.setItem(ACTIVE_TAB_KEY, next); } catch (_) {}
+        markTabReady();
+      });
+    } catch (_) {
+      setTab('filter', { persist: false });
+      markTabReady();
+    }
   }
 
   function showToast(msg, ms = 2200) {
@@ -185,7 +231,7 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-    setTab('filter'); // default — Filter is the primary Pro feature surface
+    loadInitialTab(); // default — Filter is the primary Pro feature surface
     wireTabButtons();
     wireProNav();
     wireActivateCancel();
@@ -193,5 +239,5 @@
     wireTheme();
   });
 
-  window.__xvmTabs = { setTab, showToast, TABS, applyTheme };
+  window.__xvmTabs = { setTab, showToast, TABS, applyTheme, ACTIVE_TAB_KEY };
 })();

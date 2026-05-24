@@ -202,6 +202,18 @@ describe('#45 popup-dashboard.js tab router', () => {
     expect(/querySelectorAll\(\s*['"]\[role="tab"\]\[data-tab\]['"]\s*\)/.test(dashJs)).toBe(true);
     expect(/querySelectorAll\(\s*['"]\[role="tab"\]['"]\s*\)/.test(dashJs)).toBe(false);
   });
+  it('persists and restores the last selected main popup tab', () => {
+    expect(/ACTIVE_TAB_KEY\s*=\s*['"]xvm_popup_active_tab['"]/.test(dashJs)).toBe(true);
+    expect(/localStorage\.getItem\(ACTIVE_TAB_KEY\)/.test(dashJs)).toBe(true);
+    expect(/localStorage\.setItem\(ACTIVE_TAB_KEY,\s*name\)/.test(dashJs)).toBe(true);
+    expect(/chrome\.storage\.local\.get\(\s*\{\s*\[ACTIVE_TAB_KEY\]\s*:\s*['"]filter['"]\s*\}/.test(dashJs)).toBe(true);
+    expect(/chrome\.storage\.local\.set\(\s*\{\s*\[ACTIVE_TAB_KEY\]\s*:\s*name\s*\}/.test(dashJs)).toBe(true);
+    expect(/<body[^>]*data-tab-ready=/.test(html)).toBe(false);
+    expect(/body:not\(\[data-tab-ready="1"\]\)\s+\.popup\s*\{\s*visibility:\s*hidden/.test(html)).toBe(true);
+    expect(/document\.body\.dataset\.tabReady\s*=\s*['"]1['"]/.test(dashJs)).toBe(true);
+    expect(/const\s+next\s*=\s*isValidTab\(saved\)\s*\?\s*saved\s*:\s*['"]filter['"]/.test(dashJs)).toBe(true);
+    expect(/setTab\(next,\s*\{\s*persist:\s*false\s*\}\s*\)/.test(dashJs)).toBe(true);
+  });
   it('listens for xvm-pro-nav (activate link click)', () => {
     expect(/xvm-pro-nav/.test(dashJs)).toBe(true);
     expect(/['"]activate['"]/.test(dashJs)).toBe(true);

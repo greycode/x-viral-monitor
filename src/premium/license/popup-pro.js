@@ -8,14 +8,16 @@
 // tier rules must be made in BOTH places, which the license-slice tests
 // will catch via duplicated invariant assertions).
 //
-// Buy URLs (Creem checkout). Live mode product IDs locked 2026-05-19 #45:
-//   Monthly $9 — prod_7f7t9EHK3RJlOK37DWr7J
-//   Annual  $90 — prod_69yTiXGXb04DKm46DNVbN9
+// Buy URLs (Creem checkout). Product IDs are still the pre-price-change IDs
+// until the $2.9/mo and $29/yr Creem products are created and wired.
+//   Monthly $2.9 display — prod_7f7t9EHK3RJlOK37DWr7J (TODO: replace product id)
+//   Annual  $29 display  — prod_69yTiXGXb04DKm46DNVbN9 (TODO: replace product id)
 
 (() => {
   const LICENSE_PROXY_URL = 'https://xmp-license.lengkuxiaomao.workers.dev';
   const BUY_URL_MONTHLY = 'https://www.creem.io/payment/prod_7f7t9EHK3RJlOK37DWr7J';
   const BUY_URL_ANNUAL  = 'https://www.creem.io/payment/prod_69yTiXGXb04DKm46DNVbN9';
+  console.warn('[xvm pro] Checkout URLs still use old Creem product IDs; replace when $2.9/mo and $29/yr products are available.');
 
   // All tier-resolution logic lives in tier-logic.js (loaded BEFORE us via
   // <script> in popup.html). Single source of truth; eliminates mirror

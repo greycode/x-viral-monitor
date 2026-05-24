@@ -124,4 +124,19 @@ describe('#45 step 3 — popup pro UI', () => {
       expect(zh[key]?.message, `zh_CN/messages.json must declare ${key}`).toBeTruthy();
     }
   });
+
+  it('price copy escapes literal dollar signs for chrome.i18n', () => {
+    const locales = ['en', 'zh_CN', 'ja'];
+    const priceKeys = [
+      'proCtaMonthly', 'proCtaAnnual',
+      'heroCtaUpgradeAnnual', 'heroCtaUpgradeMonthly',
+      'contentLbHotMonthly', 'contentLbHotAnnual',
+    ];
+    for (const locale of locales) {
+      const messages = JSON.parse(readFileSync(resolve(repo, `_locales/${locale}/messages.json`), 'utf8'));
+      for (const key of priceKeys) {
+        expect(messages[key]?.message, `${locale}/${key} must include escaped literal $`).toMatch(/\$\$(?:2\.9|29)/);
+      }
+    }
+  });
 });

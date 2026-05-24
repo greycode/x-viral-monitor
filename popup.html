@@ -154,6 +154,7 @@
     /* === Tab panels === */
     [role="tabpanel"] { display: none; }
     [role="tabpanel"][data-active="1"] { display: block; }
+    body:not([data-tab-ready="1"]) .popup { visibility: hidden; }
 
     /* === Pro tab === */
     .pro-banner {
@@ -581,7 +582,7 @@
     <header class="app-header">
       <div class="app-logo">X</div>
       <div class="app-title">
-        <span class="name">X-Viral-Monitor Pro</span>
+        <span class="name">X-Viral-Monitor</span>
         <span class="sub" data-i18n="popupSubtitle">Real-time impression velocity on X tweets</span>
       </div>
       <span id="tier-chip">FREE</span>
