@@ -73,15 +73,27 @@ function attrNode(kind) {
 }
 
 function contentFilterDomHarness() {
-  const root = { insertBefore() {}, firstChild: null };
+  const root = {
+    children: [],
+    firstChild: null,
+    insertBefore(node, before) {
+      node.parentElement = root;
+      const idx = before ? root.children.indexOf(before) : -1;
+      if (idx >= 0) root.children.splice(idx, 0, node);
+      else root.children.push(node);
+      root.firstChild = root.children[0] || null;
+    },
+  };
   const mainCell = attrNode('cell');
   const mainArticle = attrNode('article');
   const cell = attrNode('cell');
   const article = attrNode('article');
-  const mainLink = { getAttribute: () => '/owner/status/0' };
+  const mainLink = { getAttribute: () => '/rwayne/status/2059141230542671887' };
   const link = { getAttribute: () => '/spam/status/1' };
   mainCell.parentElement = root;
   cell.parentElement = root;
+  root.children = [mainCell, cell];
+  root.firstChild = mainCell;
   mainArticle.closest = (selector) => (selector === '[data-testid="cellInnerDiv"]' ? mainCell : null);
   mainArticle.querySelector = (selector) => (selector.includes('/status/') ? mainLink : null);
   mainCell.querySelector = (selector) => (selector === 'article[data-testid="tweet"]' ? mainArticle : null);
@@ -90,8 +102,8 @@ function contentFilterDomHarness() {
   cell.querySelector = (selector) => (selector === 'article[data-testid="tweet"]' ? article : null);
   const document = {
     documentElement: { appendChild() {} },
-    getElementById: () => null,
-    createElement: () => ({ id: '', textContent: '', style: {}, dataset: {}, appendChild() {}, addEventListener() {} }),
+    getElementById: (id) => root.children.find((node) => node.id === id) || null,
+    createElement: () => ({ id: '', textContent: '', style: {}, dataset: {}, hidden: false, appendChild() {}, addEventListener() {} }),
     querySelector: () => null,
     querySelectorAll(selector) {
       if (selector === 'article[data-testid="tweet"]') return [mainArticle, article];
@@ -126,7 +138,7 @@ function contentFilterDomHarness() {
       },
     },
   };
-  return { article, cell, mainArticle, mainCell, document, tweet };
+  return { article, cell, mainArticle, mainCell, root, document, tweet };
 }
 
 describe('#123 XVM content filter v1', () => {
@@ -417,6 +429,9 @@ describe('#123 XVM content filter v1', () => {
     expect(detail.article.hasAttribute('data-xvm-content-filter-hidden')).toBe(true);
     expect(detail.cell.style.display).toBe('none');
     expect(detailApi._debug.replyArticles()).toHaveLength(1);
+    expect(detail.root.children[0]).toBe(detail.mainCell);
+    expect(detail.root.children[1].id).toBe('xvm-content-filter-summary');
+    expect(detail.root.children[2]).toBe(detail.cell);
   });
 
   it('ignores summary DOM mutations and debounces external observer work', () => {

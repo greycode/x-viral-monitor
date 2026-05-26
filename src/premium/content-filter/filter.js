@@ -299,6 +299,11 @@
     return m?.[1] || null;
   }
 
+  function currentStatusId() {
+    const m = (window.location?.pathname || '').match(/\/status\/(\d+)/);
+    return m?.[1] || null;
+  }
+
   function applyHidesNow() {
     if (!gateOpen() || !SETTINGS.enabled) {
       revoke();
@@ -419,25 +424,41 @@
     return /\/status\/\d+/.test(window.location?.pathname || '');
   }
 
-  function replyArticles() {
+  function articleCells() {
     if (!isTweetDetailPage()) return [];
     const cells = Array.from(document.querySelectorAll('[data-testid="cellInnerDiv"]'));
-    const articleCells = cells
+    return cells
       .map((cell) => ({ cell, art: cell.querySelector?.('article[data-testid="tweet"]') }))
       .filter((item) => item.art);
-    if (articleCells.length <= 1) return [];
-    return articleCells.slice(1).map((item) => item.art);
+  }
+
+  function mainArticleIndex(items = articleCells()) {
+    const statusId = currentStatusId();
+    if (!items.length) return -1;
+    if (statusId) {
+      const byId = items.findIndex((item) => getTweetIdFromArticle(item.art) === statusId);
+      if (byId >= 0) return byId;
+    }
+    return 0;
+  }
+
+  function replyArticles() {
+    const items = articleCells();
+    const mainIdx = mainArticleIndex(items);
+    if (mainIdx < 0) return [];
+    const mainId = getTweetIdFromArticle(items[mainIdx].art);
+    return items
+      .filter((item, idx) => idx > mainIdx && getTweetIdFromArticle(item.art) !== mainId)
+      .map((item) => item.art);
   }
 
   function findReplyAnchor() {
-    if (!isTweetDetailPage()) return null;
-    const cells = Array.from(document.querySelectorAll('[data-testid="cellInnerDiv"]'));
-    const firstArticleCell = cells.find((cell) => cell.querySelector?.('article[data-testid="tweet"]'));
-    const replyCell = cells.find((cell) => {
-      const art = cell.querySelector?.('article[data-testid="tweet"]');
-      return art && cell !== firstArticleCell;
-    });
-    const before = replyCell || firstArticleCell;
+    const items = articleCells();
+    const mainIdx = mainArticleIndex(items);
+    if (mainIdx < 0) return null;
+    const mainId = getTweetIdFromArticle(items[mainIdx].art);
+    const reply = items.find((item, idx) => idx > mainIdx && getTweetIdFromArticle(item.art) !== mainId);
+    const before = reply?.cell || items[mainIdx + 1]?.cell || null;
     return before?.parentElement ? { container: before.parentElement, before } : null;
   }
 
@@ -546,6 +567,7 @@
       isTweetDetailPage,
       replyArticles,
       findReplyAnchor,
+      currentStatusId,
       isOwnMutation,
       scheduleApply,
       gateOpen,
