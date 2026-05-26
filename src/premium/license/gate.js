@@ -26,7 +26,6 @@
 
   const FEATURE_TIER = {
     'rate-filter': 'trial', // M1 paid feature
-    'list-member-filter': 'trial', // M2 Pro PoC: X List member timeline filter
   };
 
   // Fail-closed default until isolated.js posts a real tier.

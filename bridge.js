@@ -72,11 +72,6 @@ const CONTENT_MESSAGE_KEYS = [
   'contentLbHotOnly',
   'contentLbHotProTitle',
   'contentLbHotProSub',
-  'contentLbListOnly',
-  'contentLbListProTitle',
-  'contentLbListProSub',
-  'contentLbListDisabledTitle',
-  'contentLbListDisabledSub',
   'contentLbHotMonthly',
   'contentLbHotAnnual',
 ];
@@ -199,89 +194,6 @@ function safeChromeCall(fn) {
   } catch (e) {}
 }
 
-const LIST_MEMBER_FETCH_REQUEST_KEY = 'xvm_list_member_fetch_request_v1';
-const LIST_MEMBER_FETCH_RESPONSE_KEY = 'xvm_list_member_fetch_response_v1';
-const X_BEARER_TOKEN = 'AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA';
-let lastListMemberFetchRequestId = '';
-
-function cookieValue(name) {
-  try {
-    const m = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
-    return m ? decodeURIComponent(m[1]) : '';
-  } catch (_) {
-    return '';
-  }
-}
-
-function listMemberFetchHeaders() {
-  const ct0 = cookieValue('ct0');
-  const headers = {
-    authorization: `Bearer ${X_BEARER_TOKEN}`,
-    accept: '*/*',
-    'content-type': 'application/json',
-    'x-twitter-active-user': 'yes',
-    'x-twitter-client-language': navigator.language?.slice(0, 2) || 'en',
-  };
-  if (ct0) headers['x-csrf-token'] = ct0;
-  return headers;
-}
-
-function writeListMemberFetchResponse(response) {
-  const key = response.responseKey || LIST_MEMBER_FETCH_RESPONSE_KEY;
-  safeChromeCall(() => chrome.storage.local.set({ [key]: response }));
-}
-
-function handleListMemberFetchRequest(request) {
-  if (!request || typeof request !== 'object') return;
-  if (!request.requestId || request.requestId === lastListMemberFetchRequestId) return;
-  lastListMemberFetchRequestId = request.requestId;
-  const url = String(request.url || '');
-  const op = String(request.op || 'ListMembers');
-  const allowed = (op === 'ListMembers' && /^https:\/\/x\.com\/i\/api\/graphql\/[^/]+\/ListMembers\?/.test(url))
-    || (op === 'ListByRestId' && /^https:\/\/x\.com\/i\/api\/graphql\/[^/]+\/ListByRestId\?/.test(url));
-  if (!allowed) {
-    writeListMemberFetchResponse({
-      requestId: request.requestId,
-      responseKey: request.responseKey,
-      ok: false,
-      error: 'Unsupported List GraphQL fetch URL',
-      completedAt: Date.now(),
-    });
-    return;
-  }
-  fetch(url, {
-    method: 'GET',
-    credentials: 'include',
-    headers: listMemberFetchHeaders(),
-  }).then(async (res) => {
-    let data = null;
-    try { data = await res.json(); } catch (_) {}
-    writeListMemberFetchResponse({
-      requestId: request.requestId,
-      responseKey: request.responseKey,
-      ok: res.ok,
-      status: res.status,
-      data,
-      errors: data?.errors || null,
-      rateLimit: {
-        limit: res.headers.get('x-rate-limit-limit'),
-        remaining: res.headers.get('x-rate-limit-remaining'),
-        reset: res.headers.get('x-rate-limit-reset'),
-      },
-      error: res.ok ? '' : (data?.errors?.[0]?.message || res.statusText || 'GraphQL fetch failed'),
-      completedAt: Date.now(),
-    });
-  }).catch((e) => {
-    writeListMemberFetchResponse({
-      requestId: request.requestId,
-      responseKey: request.responseKey,
-      ok: false,
-      error: e.message || String(e),
-      completedAt: Date.now(),
-    });
-  });
-}
-
 safeChromeCall(() => {
   chrome.storage.sync.get(STORAGE_DEFAULTS, (items) => {
     pushSettings(items);
@@ -337,19 +249,6 @@ window.addEventListener('message', (event) => {
           ? items[RF_KEY]
           : { enabled: false };
         window.postMessage({ type: 'XVM_RATE_SETTINGS_UPDATE', settings }, '*');
-      });
-    });
-    return;
-  }
-
-  if (type === 'XVM_LIST_MEMBER_FILTER_REQUEST') {
-    safeChromeCall(() => {
-      const LF_KEY = 'xvm_list_member_filter_v1';
-      chrome.storage.local.get({ [LF_KEY]: null }, (items) => {
-        const settings = items[LF_KEY] && typeof items[LF_KEY] === 'object'
-          ? items[LF_KEY]
-          : { enabled: false, scopes: { home: false, list: false, profile: false, status: true }, lists: [] };
-        window.postMessage({ type: 'XVM_LIST_MEMBER_FILTER_UPDATE', settings }, '*');
       });
     });
     return;
@@ -489,34 +388,6 @@ window.addEventListener('message', (event) => {
   }
 });
 
-function writeListMemberEnabledFromInput(input) {
-  if (!(input instanceof HTMLInputElement) || input.disabled) return;
-  safeChromeCall(() => {
-    const LF_KEY = 'xvm_list_member_filter_v1';
-    chrome.storage.local.get({ [LF_KEY]: null }, (items) => {
-      const cur = items[LF_KEY] && typeof items[LF_KEY] === 'object'
-        ? items[LF_KEY]
-        : { enabled: false, scopes: { home: false, list: false, profile: false, status: true }, lists: [] };
-      chrome.storage.local.set({ [LF_KEY]: { ...cur, enabled: input.checked } });
-    });
-  });
-}
-
-document.addEventListener('change', (event) => {
-  const target = event.target;
-  if (!event.isTrusted || !(target instanceof HTMLInputElement)) return;
-  if (!target.matches('.xvm-lb-list-member input[type="checkbox"]')) return;
-  writeListMemberEnabledFromInput(target);
-}, true);
-
-document.addEventListener('click', (event) => {
-  if (!event.isTrusted) return;
-  const label = event.target?.closest?.('.xvm-lb-list-member');
-  if (!label) return;
-  const input = label.querySelector('input[type="checkbox"]');
-  setTimeout(() => writeListMemberEnabledFromInput(input), 0);
-}, true);
-
 // One-time cleanup of legacy captured template (no longer used after self-gen
 // rollout). Idempotent flag avoids the IPC on every page load.
 safeChromeCall(() => {
@@ -530,17 +401,6 @@ safeChromeCall(() => {
 
 safeChromeCall(() => {
   chrome.storage.onChanged.addListener((changes, areaName) => {
-    if (areaName === 'local' && changes[LIST_MEMBER_FETCH_REQUEST_KEY]) {
-      handleListMemberFetchRequest(changes[LIST_MEMBER_FETCH_REQUEST_KEY].newValue);
-      return;
-    }
-    if (areaName === 'local' && changes.xvm_list_member_filter_v1) {
-      const settings = changes.xvm_list_member_filter_v1.newValue && typeof changes.xvm_list_member_filter_v1.newValue === 'object'
-        ? changes.xvm_list_member_filter_v1.newValue
-        : { enabled: false, scopes: { home: false, list: false, profile: false, status: true }, lists: [] };
-      window.postMessage({ type: 'XVM_LIST_MEMBER_FILTER_UPDATE', settings }, '*');
-      return;
-    }
     if (areaName !== 'sync') return;
     // Theme changes: broadcast to MAIN-world content.js so leaderboard
     // recolors live. (Popup already self-syncs via its own listener.)

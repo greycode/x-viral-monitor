@@ -1592,11 +1592,6 @@ img.xvm-liv-img {
   cursor: not-allowed;
   opacity: 0.68;
 }
-.xvm-lb-list-member[data-ready="0"] .xvm-lb-hot-slider {
-  outline: 1px dashed rgba(110, 91, 77, 0.55);
-  outline-offset: 1px;
-}
-
 .xvm-lb[data-theme="dark"] .xvm-lb-hot-label { color: #cbd5e1; }
 .xvm-lb[data-theme="dark"] .xvm-lb-pro-badge {
   background: rgba(6, 182, 212, 0.16);
@@ -1610,10 +1605,6 @@ img.xvm-liv-img {
 .xvm-lb[data-theme="dark"] .xvm-lb-hot[data-tier="free"] .xvm-lb-hot-slider {
   outline-color: rgba(148, 163, 184, 0.55);
 }
-.xvm-lb[data-theme="dark"] .xvm-lb-list-member[data-ready="0"] .xvm-lb-hot-slider {
-  outline-color: rgba(148, 163, 184, 0.55);
-}
-
 /* Mini upgrade bubble for free users (rendered below leaderboard head). */
 .xvm-lb-upgrade {
   margin: 8px 12px 10px;

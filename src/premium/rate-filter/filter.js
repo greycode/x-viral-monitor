@@ -63,7 +63,7 @@
   const decisions = new Map();
   const counted = new Set();
   const HIDE_ATTR = 'data-xvm-rate-hidden';
-  const OTHER_HIDE_ATTRS = ['data-xvm-list-member-hidden'];
+  const OTHER_HIDE_ATTRS = [];
 
   // Listen for settings pushed from isolated.js (popup wrote
   // chrome.storage.local.xvm_rate_filter_v1 → isolated.js relays).

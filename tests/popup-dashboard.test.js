@@ -113,8 +113,6 @@ describe('#45 popup tabs structure (mock A)', () => {
       'src/premium/license/entitlement.js',
       'src/premium/license/popup-pro.js',
       'src/premium/rate-filter/popup-rate-filter.js',
-      'src/premium/list-member-filter/member-source.js',
-      'src/premium/list-member-filter/popup-list-member-filter.js',
       'popup.js',
       'popup-dashboard.js',
     ]);
@@ -307,31 +305,26 @@ describe('#69/#72 user self-test polish', () => {
     expect(/\.rf-subcard\s+\.sub-tab-btn:focus-visible\s*\{[\s\S]*?outline:\s*2px\s+solid\s+var\(--accent\)/.test(html)).toBe(true);
   });
 
-  it('renders leaderboard Hot only and List only switches with shared state sync hooks', () => {
+  it('renders the leaderboard Hot only switch with shared state sync hooks', () => {
     expect(contentJs).toMatch(/className\s*=\s*['"]xvm-lb-controls['"]/);
-    expect(contentJs).toMatch(/className\s*=\s*['"]xvm-lb-hot xvm-lb-list-member['"]/);
     expect(contentJs).toMatch(/xvm-lb-pro-badge/);
     expect(contentJs).toMatch(/aria-disabled/);
-    expect(contentJs).toMatch(/contentLbListOnly/);
-    expect(contentJs).toMatch(/XVM_LIST_MEMBER_FILTER_REQUEST/);
-    expect(contentJs).toMatch(/XVM_LIST_MEMBER_FILTER_UPDATE/);
+    expect(contentJs).toMatch(/contentLbHotOnly/);
+    expect(contentJs).toMatch(/XVM_RATE_FILTER_REQUEST/);
+    expect(contentJs).toMatch(/XVM_RATE_SETTINGS_UPDATE/);
     expect(contentJs).not.toMatch(/XVM_LIST_MEMBER_FILTER_SET_ENABLED/);
-    expect(contentJs).toMatch(/isReadyListMemberFilter/);
-    expect(contentJs).toMatch(/contentLbListDisabledSub/);
-    expect(contentJs).toMatch(/LEADERBOARD_HIDE_ATTRS\s*=\s*\[['"]data-xvm-rate-hidden['"],\s*['"]data-xvm-list-member-hidden['"]\]/);
+    expect(contentJs).not.toMatch(/isReadyListMemberFilter/);
+    expect(contentJs).not.toMatch(/contentLbListDisabledSub/);
+    expect(contentJs).toMatch(/LEADERBOARD_HIDE_ATTRS\s*=\s*\[['"]data-xvm-rate-hidden['"]\]/);
     expect(contentJs).toMatch(/function\s+isLeaderboardArticleHidden/);
     expect(contentJs).toMatch(/isLeaderboardArticleHidden\(article\)\)\s*continue/);
     expect(contentJs).toMatch(/getComputedStyle\(cell\)\.display\s*===\s*['"]none['"]/);
     expect(contentJs).toMatch(/setTimeout\(renderLeaderboard,\s*80\)/);
     expect(contentJs).toMatch(/if\s*\(!top\.length\)\s*\{[\s\S]*?list\.innerHTML\s*=\s*['"]['"][\s\S]*?el\.style\.display\s*=\s*['"]none['"]/);
-    expect(contentJs).toMatch(/closest\?\.\(['"]\.xvm-lb-controls, \.xvm-lb-hot, \.xvm-lb-list-member, label, button, input, a['"]\)/);
+    expect(contentJs).toMatch(/closest\?\.\(['"]\.xvm-lb-controls, \.xvm-lb-hot, label, button, input, a['"]\)/);
     expect(bridgeJs).not.toMatch(/XVM_LIST_MEMBER_FILTER_SET_ENABLED/);
-    expect(bridgeJs).toMatch(/event\.isTrusted/);
-    expect(bridgeJs).toMatch(/matches\(['"]\.xvm-lb-list-member input\[type="checkbox"\]['"]\)/);
-    expect(bridgeJs).toMatch(/addEventListener\(['"]change['"]/);
-    expect(bridgeJs).toMatch(/closest\?\.\(['"]\.xvm-lb-list-member['"]\)/);
-    expect(bridgeJs).toMatch(/setTimeout\(\(\)\s*=>\s*writeListMemberEnabledFromInput\(input\),\s*0\)/);
-    expect(bridgeJs).toMatch(/xvm_list_member_filter_v1/);
+    expect(bridgeJs).not.toMatch(/xvm-lb-list-member/);
+    expect(bridgeJs).not.toMatch(/xvm_list_member_filter_v1/);
     expect(/\.xvm-lb-hot\[data-tier="free"\]\s+\.xvm-lb-pro-badge\s*\{[\s\S]*?display:\s*inline-flex/.test(stylesCss)).toBe(true);
     expect(/\.xvm-lb-hot\[aria-disabled="true"\]\s*\{[\s\S]*?cursor:\s*not-allowed/.test(stylesCss)).toBe(true);
   });

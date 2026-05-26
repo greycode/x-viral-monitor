@@ -30,7 +30,19 @@ const ITEMS = [
 ];
 
 function main() {
-  if (existsSync(dist)) rmSync(dist, { recursive: true, force: true });
+  let cleanRoot = true;
+  if (existsSync(dist)) {
+    try {
+      rmSync(dist, { recursive: true, force: true });
+    } catch (err) {
+      if (err?.code !== 'EBUSY') throw err;
+      cleanRoot = false;
+      console.warn('[build-dist] dist/ is locked, refreshing entries in place');
+      for (const item of ITEMS) {
+        rmSync(resolve(dist, item), { recursive: true, force: true });
+      }
+    }
+  }
   mkdirSync(dist, { recursive: true });
 
   let copied = 0;
@@ -49,7 +61,7 @@ function main() {
     }
     copied += 1;
   }
-  console.log(`[build-dist] synced ${copied} entries to dist/`);
+  console.log(`[build-dist] synced ${copied} entries to dist/${cleanRoot ? '' : ' (in-place)'}`);
   console.log(`[build-dist] chrome → load unpacked → ${dist}`);
 }
 

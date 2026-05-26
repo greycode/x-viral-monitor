@@ -111,9 +111,9 @@ describe('#45 M1 step 1 — premium gate scaffold', () => {
       ).toBe(false);
     });
 
-    it('rate-filter revoke/keep preserves list-member hidden cells', () => {
+    it('rate-filter revoke/keep only owns its own hide marker', () => {
       expect(filter).toMatch(/HIDE_ATTR\s*=\s*['"]data-xvm-rate-hidden['"]/);
-      expect(filter).toMatch(/OTHER_HIDE_ATTRS\s*=\s*\[['"]data-xvm-list-member-hidden['"]\]/);
+      expect(filter).toMatch(/OTHER_HIDE_ATTRS\s*=\s*\[\]/);
       expect(filter).toMatch(/hasOtherXvmHideMarker/);
       expect(filter).toMatch(/restoreCellIfNoOtherXvmMarker/);
       expect(filter).toMatch(/if\s*\(\s*!\s*hasOtherXvmHideMarker\(art\)\s*\)\s*cell\.style\.display\s*=\s*['"]['"]/);

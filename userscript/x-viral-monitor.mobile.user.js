@@ -230,7 +230,7 @@
 
   function shouldCaptureGraphqlUrl(url) {
     const op = graphqlOpNameFromUrl(url);
-    return /^(HomeTimeline|HomeLatestTimeline|TweetDetail|ListMembers|ListByRestId|ListLatestTweetsTimeline|UserTweets|UserTweetsAndReplies|UserMedia|SearchTimeline|Bookmarks)$/i.test(op);
+    return /^(HomeTimeline|HomeLatestTimeline|TweetDetail|ListLatestTweetsTimeline|UserTweets|UserTweetsAndReplies|UserMedia|SearchTimeline|Bookmarks)$/i.test(op);
   }
 
   function parseGraphqlUrl(url) {
