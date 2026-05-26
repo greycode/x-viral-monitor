@@ -18,7 +18,7 @@ const popupHtml = readFileSync(resolve(repo, 'popup.html'), 'utf8');
 const rateFilter = readFileSync(resolve(repo, 'src/premium/rate-filter/filter.js'), 'utf8');
 const content = readFileSync(resolve(repo, 'content.js'), 'utf8');
 
-function loadDebug() {
+function loadDebug(overrides = {}) {
   const win = {
     location: { pathname: '/home' },
     addEventListener() {},
@@ -29,10 +29,11 @@ function loadDebug() {
       isFeatureEnabled: () => true,
       onTierChange() {},
     },
+    ...(overrides.window || {}),
   };
   const context = {
     window: win,
-    document: {
+    document: overrides.document || {
       documentElement: { appendChild() {} },
       getElementById: () => null,
       createElement: () => ({ id: '', textContent: '', style: {}, appendChild() {}, addEventListener() {} }),
@@ -48,6 +49,71 @@ function loadDebug() {
   };
   vm.runInNewContext(filter, context);
   return win.__xvmContentFilter;
+}
+
+function attrNode(kind) {
+  const attrs = new Map();
+  return {
+    kind,
+    style: {},
+    setAttribute(name, value) { attrs.set(name, String(value)); },
+    removeAttribute(name) { attrs.delete(name); },
+    hasAttribute(name) { return attrs.has(name); },
+    getAttribute(name) { return attrs.get(name) || ''; },
+    matches(selector) {
+      if (selector === 'article') return kind === 'article';
+      if (selector === '[data-testid="cellInnerDiv"]') return kind === 'cell';
+      if (selector === 'article[data-testid="tweet"]') return kind === 'article';
+      return false;
+    },
+  };
+}
+
+function contentFilterDomHarness() {
+  const cell = attrNode('cell');
+  const article = attrNode('article');
+  const link = { getAttribute: () => '/spam/status/1' };
+  article.closest = (selector) => (selector === '[data-testid="cellInnerDiv"]' ? cell : null);
+  article.querySelector = (selector) => (selector.includes('/status/') ? link : null);
+  cell.querySelector = (selector) => (selector === 'article[data-testid="tweet"]' ? article : null);
+  const document = {
+    documentElement: { appendChild() {} },
+    getElementById: () => null,
+    createElement: () => ({ id: '', textContent: '', style: {}, appendChild() {}, addEventListener() {} }),
+    querySelector: () => null,
+    querySelectorAll(selector) {
+      if (selector === 'article[data-testid="tweet"]') return [article];
+      if (selector.includes('cellInnerDiv') && selector.includes('data-xvm-content-filter-hidden')) {
+        const out = [];
+        if (article.hasAttribute('data-xvm-content-filter-hidden')) out.push(article);
+        if (cell.hasAttribute('data-xvm-content-filter-hidden')) out.push(cell);
+        return out;
+      }
+      return [];
+    },
+  };
+  const tweet = {
+    legacy: {
+      id_str: '1',
+      full_text: '福利视频资源都在群里，私信加入 https://t.co/a',
+      created_at: 'Tue May 26 00:00:00 +0000 2026',
+      entities: { urls: [{ expanded_url: 'https://t.me/sample' }] },
+    },
+    core: {
+      user_results: {
+        result: {
+          rest_id: 'u1',
+          legacy: {
+            name: 'Spam',
+            screen_name: 'spam',
+            description: '电报频道',
+            location: '',
+          },
+        },
+      },
+    },
+  };
+  return { article, cell, document, tweet };
 }
 
 describe('#123 XVM content filter v1', () => {
@@ -291,5 +357,27 @@ describe('#123 XVM content filter v1', () => {
     expect(filter).toMatch(/createLocalRuleSource/);
     expect(filter).toMatch(/type:\s*['"]local-json['"]/);
     expect(filter).toMatch(/window\.__xvmContentFilterBuiltinRules/);
+  });
+
+  it('content-filter is opt-in and restores hidden cells when disabled', () => {
+    const h = contentFilterDomHarness();
+    const api = loadDebug({ document: h.document });
+    api.updateSettings({ enabled: false, level: 'standard', whitelistFollowing: false });
+    api._debug.scanForTweets({ tweet_results: { result: h.tweet } });
+    api._debug.applyHidesNow();
+    expect(h.article.hasAttribute('data-xvm-content-filter-hidden')).toBe(false);
+    expect(h.cell.hasAttribute('data-xvm-content-filter-hidden')).toBe(false);
+    expect(h.cell.style.display || '').toBe('');
+
+    api.updateSettings({ enabled: true, level: 'standard', whitelistFollowing: false });
+    api._debug.applyHidesNow();
+    expect(h.article.hasAttribute('data-xvm-content-filter-hidden')).toBe(true);
+    expect(h.cell.hasAttribute('data-xvm-content-filter-hidden')).toBe(true);
+    expect(h.cell.style.display).toBe('none');
+
+    api.updateSettings({ enabled: false, level: 'standard', whitelistFollowing: false });
+    expect(h.article.hasAttribute('data-xvm-content-filter-hidden')).toBe(false);
+    expect(h.cell.hasAttribute('data-xvm-content-filter-hidden')).toBe(false);
+    expect(h.cell.style.display || '').toBe('');
   });
 });

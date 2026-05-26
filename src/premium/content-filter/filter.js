@@ -311,10 +311,10 @@
       const cell = cellForArticle(art);
       if (d?.hide) {
         if (cell?.style) cell.style.display = 'none';
-        art.setAttribute(HIDE_ATTR, d.reason || 'matched');
+        setHideMarker(art, cell, d.reason || 'matched');
         hiddenRecords.set(id, recordFromDecision(id, d));
-      } else if (art.hasAttribute(HIDE_ATTR)) {
-        art.removeAttribute(HIDE_ATTR);
+      } else if (hasContentHideMarker(art, cell)) {
+        removeHideMarker(art, cell);
         hiddenRecords.delete(id);
         restoreCellIfNoOtherXvmMarker(art, cell);
       }
@@ -334,18 +334,35 @@
     };
   }
 
-  function hasOtherXvmHideMarker(art) {
-    return OTHER_HIDE_ATTRS.some((attr) => art.hasAttribute(attr));
+  function hasOtherXvmHideMarker(art, cell = cellForArticle(art)) {
+    return OTHER_HIDE_ATTRS.some((attr) => art?.hasAttribute?.(attr) || cell?.hasAttribute?.(attr));
+  }
+
+  function hasContentHideMarker(art, cell = cellForArticle(art)) {
+    return art?.hasAttribute?.(HIDE_ATTR) || cell?.hasAttribute?.(HIDE_ATTR);
+  }
+
+  function setHideMarker(art, cell = cellForArticle(art), reason = 'matched') {
+    art?.setAttribute?.(HIDE_ATTR, reason);
+    if (cell && cell !== art) cell.setAttribute?.(HIDE_ATTR, reason);
+  }
+
+  function removeHideMarker(art, cell = cellForArticle(art)) {
+    art?.removeAttribute?.(HIDE_ATTR);
+    if (cell && cell !== art) cell.removeAttribute?.(HIDE_ATTR);
   }
 
   function restoreCellIfNoOtherXvmMarker(art, cell = cellForArticle(art)) {
-    if (cell?.style && !hasOtherXvmHideMarker(art)) cell.style.display = '';
+    if (cell?.style && !hasOtherXvmHideMarker(art, cell)) cell.style.display = '';
   }
 
   function revoke() {
-    document.querySelectorAll(`article[${HIDE_ATTR}]`).forEach((art) => {
-      const cell = cellForArticle(art);
-      art.removeAttribute(HIDE_ATTR);
+    const nodes = new Set(document.querySelectorAll(`article[${HIDE_ATTR}], [data-testid="cellInnerDiv"][${HIDE_ATTR}]`));
+    nodes.forEach((node) => {
+      const isCell = node?.matches?.('[data-testid="cellInnerDiv"]');
+      const art = isCell ? node.querySelector?.('article[data-testid="tweet"]') : node;
+      const cell = isCell ? node : cellForArticle(art);
+      removeHideMarker(art, cell);
       restoreCellIfNoOtherXvmMarker(art, cell);
     });
     hiddenRecords.clear();
@@ -444,6 +461,8 @@
       matchRule,
       normalizeSettings,
       createLocalRuleSource,
+      scanForTweets,
+      applyHidesNow,
       updateSummary,
       gateOpen,
     },

@@ -5,6 +5,19 @@ This project follows Keep a Changelog and Semantic Versioning.
 
 ---
 
+## [1.7.4] - 2026-05-26
+
+### Fixed
+
+- Fixed content filtering so it remains fully opt-in: disabled settings now reliably restore reply cells hidden earlier in the same page session.
+- Hardened cross-filter restore handling by marking and clearing the actual X timeline cell that was hidden, not only the nested tweet article.
+
+### Internal
+
+- Added a DOM-level regression test covering disabled-by-default behavior and OFF-state restore for the content filter.
+
+---
+
 ## [1.7.3] - 2026-05-26
 
 ### Changed
