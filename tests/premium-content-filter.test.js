@@ -145,6 +145,36 @@ describe('#123 XVM content filter v1', () => {
     expect(blocked.matches.some((m) => m.id === 'hard-blacklist-handle')).toBe(true);
   });
 
+  it('content-filter uses the approved severity thresholds', () => {
+    const api = loadDebug();
+    const tmeOnly = {
+      id: 'medium-1',
+      content: 'normal update',
+      urls: ['https://t.me/example'],
+      author: { handle: 'chan', name: 'normal', bio: '', location: '' },
+    };
+    const lowOnly = {
+      id: 'low-1',
+      content: '黑丝写真',
+      urls: [],
+      author: { handle: 'soft', name: 'normal', bio: '', location: '' },
+    };
+    const highName = {
+      id: 'high-1',
+      content: 'hello',
+      urls: [],
+      author: { handle: 'spam2', name: '点击主页', bio: '', location: '附近可约线下' },
+    };
+    api.updateSettings({ enabled: true, level: 'light', whitelistFollowing: false });
+    expect(api._debug.classify(highName).hide).toBe(false);
+    api.updateSettings({ enabled: true, level: 'standard', whitelistFollowing: false });
+    expect(api._debug.classify(tmeOnly).hide).toBe(false);
+    expect(api._debug.classify(highName).hide).toBe(true);
+    api.updateSettings({ enabled: true, level: 'strict', whitelistFollowing: false });
+    expect(api._debug.classify(tmeOnly).hide).toBe(true);
+    expect(api._debug.classify(lowOnly).hide).toBe(false);
+  });
+
   it('extracts sample-style X reply fields used by content filtering', () => {
     const api = loadDebug();
     const result = {
@@ -182,6 +212,7 @@ describe('#123 XVM content filter v1', () => {
     const classified = api._debug.classify(raw);
     expect(classified.hide).toBe(true);
     expect(classified.matches.some((m) => m.id === 'hard-telegram-group-funnel')).toBe(true);
+    expect(classified.matches.some((m) => m.id === 'spam-bio-zhongtui-high')).toBe(true);
   });
 
   it('rate filter and leaderboard know about the content-filter hide marker', () => {

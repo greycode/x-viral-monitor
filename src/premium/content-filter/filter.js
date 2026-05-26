@@ -23,9 +23,9 @@
   const HIDE_ATTR = 'data-xvm-content-filter-hidden';
   const OTHER_HIDE_ATTRS = ['data-xvm-rate-hidden'];
   const LEVEL_THRESHOLDS = {
-    light: new Set(['high', 'block']),
-    standard: new Set(['medium', 'high', 'block']),
-    strict: new Set(['low', 'medium', 'high', 'block']),
+    light: new Set(['block']),
+    standard: new Set(['high', 'block']),
+    strict: new Set(['medium', 'high', 'block']),
   };
   const ENDPOINT_MATCHERS = [
     /\/i\/api\/graphql\/[^/]+\/HomeTimeline\b/,
@@ -248,7 +248,7 @@
 
   function telegramFunnel(raw) {
     const text = `${raw.content || ''} ${raw.author?.bio || ''} ${raw.urls.join(' ')}`.toLowerCase();
-    return /(t\.me|telegram|电报|飞机)/i.test(text) && /(群|频道|福利|资源|私信|加|join|channel)/i.test(text);
+    return /(t\.me|telegram|电报|飞机)/i.test(text) && /(中推|中文推特|群|频道|福利|资源|私信|加|join|channel)/i.test(text);
   }
 
   function activeRules() {
