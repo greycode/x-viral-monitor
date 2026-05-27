@@ -66,10 +66,20 @@
       merged.scopeStatus = false;
     }
     SETTINGS = merged;
+    // Preserve d.scope across re-classify — otherwise per-decision gating
+    // in applyHidesNow can't tell which scope a decision belongs to and
+    // the un-hide path for "toggle this scope off" never runs.
     for (const [id, d] of decisions) {
-      if (d.raw) decisions.set(id, { ...classify(d.raw), raw: d.raw });
+      if (d.raw) decisions.set(id, { ...classify(d.raw), raw: d.raw, scope: d.scope });
     }
     applyHidesNow();
+  }
+
+  function anyScopeEnabled() {
+    return SETTINGS.scopeHome === true
+      || SETTINGS.scopeList === true
+      || SETTINGS.scopeProfile === true
+      || SETTINGS.scopeStatus === true;
   }
 
   // === State ===
@@ -251,10 +261,12 @@
   // article so tracking selectors (e.g. revoke's [data-xvm-rate-hidden])
   // keep working.
   function applyHidesNow() {
-    // Tier revoke or no-scope-active must restore only nodes this module
-    // hid. Decisions stay cached so turning ON again can immediately
-    // re-hide already scanned timeline tweets.
-    if (!gateOpen()) {
+    // Fast paths matching the old smooth behavior:
+    //  1. Pro gate closed → revoke everything we ever hid.
+    //  2. ALL scopes off → revoke everything (matches the user mental
+    //     model of "turn it off → all replies come back instantly"
+    //     without paying the per-decision iteration cost).
+    if (!gateOpen() || !anyScopeEnabled()) {
       revoke();
       return;
     }
