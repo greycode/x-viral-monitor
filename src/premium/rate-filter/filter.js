@@ -201,7 +201,10 @@
           else data = response.json();
         } catch (_) { return; }
         scanForTweets(data, scope);
-        applyHidesNow();
+        // Batch with MutationObserver fires — multiple GraphQL responses
+        // arriving back-to-back (e.g. cold-start replay) become one
+        // applyHidesNow rather than N synchronous DOM passes.
+        scheduleApply();
       });
     }
   }
@@ -295,46 +298,54 @@
     }
     const arts = document.querySelectorAll('article[data-testid="tweet"]');
     for (const art of arts) {
-      const tid = articleTweetId(art);
+      const meta = articleMeta(art);
+      const tid = meta.tid;
       if (!tid) continue;
       const d = decisions.get(tid);
       if (!d) continue;
+      const cell = meta.cell;
+      const isMarked = art.hasAttribute(HIDE_ATTR);
       // Per-decision gating: each tweet remembers which endpoint provided
       // it, so an interleaved HomeTimeline + ListLatestTweetsTimeline
-      // burst can't flap the gate. The decision's scope is the source of
-      // truth — not the current URL or the last response observed.
+      // burst can't flap the gate.
       if (d.scope && !scopeEnabled(d.scope)) {
-        if (art.getAttribute(HIDE_ATTR)) {
+        if (isMarked) {
           art.removeAttribute(HIDE_ATTR);
-          const cellRestore = cellForArticle(art);
-          restoreCellIfNoOtherXvmMarker(art, cellRestore);
+          restoreCellIfNoOtherXvmMarker(art, cell);
         }
         continue;
       }
-      const cell = cellForArticle(art);
       if (d.hide) {
-        if (cell.style.display !== 'none') {
+        if (!isMarked) {
           cell.style.display = 'none';
           art.setAttribute(HIDE_ATTR, d.reason);
           if (!counted.has(tid)) counted.add(tid);
         }
-      } else if (art.getAttribute(HIDE_ATTR)) {
+      } else if (isMarked) {
         art.removeAttribute(HIDE_ATTR);
         restoreCellIfNoOtherXvmMarker(art, cell);
       }
     }
   }
 
-  function articleTweetId(art) {
+  // WeakMap-cached lookup: parsing href + closest() per article per
+  // applyHidesNow call adds up fast on a busy timeline. Articles get
+  // GC'd when X unmounts them so the WeakMap doesn't pin memory.
+  const _artMeta = new WeakMap();
+  function articleMeta(art) {
+    let m = _artMeta.get(art);
+    if (m) return m;
     const a = art.querySelector('a[href*="/status/"]');
-    if (!a) return null;
-    const m = a.getAttribute('href').match(/\/status\/(\d+)/);
-    return m ? m[1] : null;
+    const href = a?.getAttribute('href') || '';
+    const mm = href.match(/\/status\/(\d+)/);
+    const tid = mm ? mm[1] : null;
+    const cell = art.closest('[data-testid="cellInnerDiv"]') || art;
+    m = { tid, cell };
+    if (tid) _artMeta.set(art, m);
+    return m;
   }
-
-  function cellForArticle(art) {
-    return art.closest('[data-testid="cellInnerDiv"]') || art;
-  }
+  function articleTweetId(art) { return articleMeta(art).tid; }
+  function cellForArticle(art) { return articleMeta(art).cell; }
 
   function hasOtherXvmHideMarker(art) {
     return OTHER_HIDE_ATTRS.some((attr) => art.hasAttribute(attr));
@@ -373,7 +384,31 @@
   });
 
   // === Mutation observer (X virtual scroll re-mounts) ===
-  const mo = new MutationObserver(() => applyHidesNow());
+  // X mutates the timeline very aggressively during scroll — every
+  // hover, every avatar lazy-load, every tween. We only care about
+  // mutations that add or remove an article node. Coalesce surviving
+  // triggers through requestAnimationFrame so a burst becomes one
+  // applyHidesNow pass.
+  let _applyScheduled = false;
+  function scheduleApply() {
+    if (_applyScheduled) return;
+    _applyScheduled = true;
+    const run = () => { _applyScheduled = false; applyHidesNow(); };
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(run);
+    else setTimeout(run, 16);
+  }
+  function nodeContainsArticle(node) {
+    if (!node || node.nodeType !== 1) return false;
+    if (node.matches?.('article[data-testid="tweet"]')) return true;
+    return !!node.querySelector?.('article[data-testid="tweet"]');
+  }
+  const mo = new MutationObserver((mutations) => {
+    for (const m of mutations) {
+      if (m.type !== 'childList') continue;
+      for (const n of m.addedNodes)   if (nodeContainsArticle(n)) { scheduleApply(); return; }
+      for (const n of m.removedNodes) if (nodeContainsArticle(n)) { scheduleApply(); return; }
+    }
+  });
 
   // === Bootstrap ===
   function activate() {
