@@ -350,7 +350,11 @@
   const RULE_TYPES_ALLOWED = new Set(['keyword', 'regex', 'domain', 'short-symbol']);
   const RULE_FIELDS_ALLOWED = new Set(['name', 'screen_name', 'bio', 'location', 'content', 'url']);
   const RULE_SEVERITIES_ALLOWED = new Set(['low', 'medium', 'high', 'block']);
-  const REGEX_MAX_LEN = 240;
+  // Spam rule unions can legitimately get long (we've shipped a
+  // 278-char content-funnel union; the previous 240 cap silently
+  // rejected the whole payload). 400 still blocks obviously-crafted
+  // catastrophic regexes paired with the nested-quantifier heuristic.
+  const REGEX_MAX_LEN = 400;
   // Catastrophic backtracking heuristic: nested unbounded quantifiers
   // like (.+)+ / (.*)*. Not exhaustive but blocks the obvious foot-guns.
   const REGEX_NESTED_QUANTIFIER = /\([^()]*[+*][^()]*\)[+*?]/;

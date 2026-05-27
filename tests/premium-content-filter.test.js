@@ -812,7 +812,7 @@ describe('#123 XVM content filter v1', () => {
     // We can't easily run the IIFE in isolation, but we can grep the
     // hardened constants + heuristic regex out of the source to make sure
     // future refactors don't drop the defense.
-    expect(isolated).toMatch(/REGEX_MAX_LEN\s*=\s*240/);
+    expect(isolated).toMatch(/REGEX_MAX_LEN\s*=\s*400/);
     expect(isolated).toMatch(/REGEX_NESTED_QUANTIFIER/);
     expect(isolated).toMatch(/REMOTE_RULES_SCHEMA_MAX/);
     expect(isolated).toMatch(/REMOTE_RULES_MIN_RETRY_MS/);
