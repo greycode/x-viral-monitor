@@ -32,6 +32,7 @@
   }
   const { isXvmProduct, licenseStatusFrom, resolveTierFrom } = TL;
   const { verifyEntitlementEnvelope } = ENT;
+  const isCommunityDev = globalThis.__xvmIsCommunityDevBuild === true;
 
   const STORAGE_KEY = 'xvm_license_v1';
   const TRIAL_KEY = 'xvm_trial_v1';
@@ -183,6 +184,9 @@
 
   // ─── Tier resolver — delegates to tier-logic.js pure helpers ────────
   async function resolveTier({ revalidate = true } = {}) {
+    if (isCommunityDev) {
+      return { tier: 'pro', daysLeft: 0, source: 'community-dev', record: null };
+    }
     const stored = await storageGet(STORAGE_KEY, null);
     const trial  = await storageGet(TRIAL_KEY, null);
     // Non-blocker #3 fix: tier-logic.js threads lic.source (expired /
@@ -250,14 +254,21 @@
     const days = info.daysLeft;
     container.dataset.tier = tier;
     document.body.dataset.tier = tier;
+    document.body.dataset.buildChannel = globalThis.__xvmBuildChannel || 'store';
     window.__xvmProDays = (tier === 'trial') ? days : null;
     window.dispatchEvent(new CustomEvent('xvm-pro-days', { detail: { days, tier } }));
     container.innerHTML = '';
+    if (isCommunityDev) {
+      const dev = document.createElement('div');
+      dev.className = 'community-dev-badge';
+      dev.textContent = t('communityDevBadge');
+      container.appendChild(dev);
+    }
 
     // Tier giant label
     const tierEl = document.createElement('div');
     tierEl.className = 'tier-big';
-    tierEl.textContent = tier === 'pro' ? 'PRO' : tier === 'trial' ? 'TRIAL' : 'FREE';
+    tierEl.textContent = isCommunityDev ? 'DEV' : tier === 'pro' ? 'PRO' : tier === 'trial' ? 'TRIAL' : 'FREE';
     container.appendChild(tierEl);
 
     // Tier subtitle
@@ -265,6 +276,8 @@
     sub.className = 'tier-sub';
     if (tier === 'trial') {
       sub.textContent = days === 1 ? t('heroTrialDayOne') : t('heroTrialDaysLeft', days);
+    } else if (isCommunityDev) {
+      sub.textContent = t('communityDevSub');
     } else if (tier === 'pro') {
       sub.textContent = t('heroProActive');
     } else {
@@ -272,7 +285,7 @@
     }
     container.appendChild(sub);
 
-    if (tier !== 'pro') {
+    if (tier !== 'pro' && !isCommunityDev) {
       const row = document.createElement('div');
       row.className = 'pro-cta-row';
       // Primary CTA = annual (save 17%)
@@ -298,7 +311,7 @@
       });
       row.appendChild(actLink);
       container.appendChild(row);
-    } else {
+    } else if (!isCommunityDev) {
       const row = document.createElement('div');
       row.className = 'pro-cta-row';
       const manage = document.createElement('a');

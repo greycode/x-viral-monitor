@@ -1,11 +1,15 @@
 {
   "name": "x-viral-monitor",
-  "version": "1.7.11",
+  "version": "1.7.12",
   "private": true,
   "type": "module",
   "scripts": {
     "debug:grok": "node scripts/debug-grok.mjs",
-    "build:dist": "node scripts/sync-rules.mjs && node scripts/build-dist.mjs",
+    "build:dist": "node scripts/sync-rules.mjs && node scripts/build-dist.mjs --channel store",
+    "build:store": "node scripts/sync-rules.mjs && node scripts/build-dist.mjs --channel store",
+    "build:community": "node scripts/sync-rules.mjs && node scripts/build-dist.mjs --channel community-dev",
+    "package:store": "node scripts/sync-rules.mjs && node scripts/build-dist.mjs --channel store && node scripts/package-zip.mjs --channel store",
+    "package:community": "node scripts/sync-rules.mjs && node scripts/build-dist.mjs --channel community-dev && node scripts/package-zip.mjs --channel community-dev",
     "sync:rules": "node scripts/sync-rules.mjs",
     "test": "vitest run",
     "test:watch": "vitest"

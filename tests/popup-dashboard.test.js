@@ -115,9 +115,10 @@ describe('#45 popup tabs structure (mock A)', () => {
     expect((html.match(/class="xvm-select"/g) || []).length).toBe(4);
   });
 
-  it('loads scripts in order: tier-logic → popup-pro → popup filters → popup.js → popup-dashboard', () => {
+  it('loads scripts in order: build-channel → tier-logic → popup-pro → popup filters → popup.js → popup-dashboard', () => {
     const scripts = [...html.matchAll(/<script\s+src="([^"]+)"/g)].map((m) => m[1]);
     expect(scripts).toEqual([
+      'src/build-channel.js',
       'src/premium/license/tier-logic.js',
       'src/premium/license/entitlement.js',
       'src/premium/license/popup-pro.js',
@@ -231,6 +232,8 @@ describe('#45 popup-dashboard.js tab router', () => {
   it('tier-chip updates via MutationObserver on body data-tier', () => {
     expect(/MutationObserver/.test(dashJs)).toBe(true);
     expect(/data-tier/.test(dashJs)).toBe(true);
+    expect(/data-build-channel/.test(dashJs)).toBe(true);
+    expect(/label\s*=\s*['"]DEV['"]/.test(dashJs)).toBe(true);
   });
 });
 
@@ -243,6 +246,13 @@ describe('#45 popup-pro.js Pro-tab rendering', () => {
   });
   it('writes document.body.dataset.tier so global CSS tier-color rules apply', () => {
     expect(/document\.body\.dataset\.tier\s*=\s*tier/.test(proJs)).toBe(true);
+  });
+  it('writes build channel and renders community dev without store license controls', () => {
+    expect(/document\.body\.dataset\.buildChannel\s*=\s*globalThis\.__xvmBuildChannel/.test(proJs)).toBe(true);
+    expect(/communityDevBadge/.test(proJs)).toBe(true);
+    expect(/communityDevSub/.test(proJs)).toBe(true);
+    expect(/tier\s*!==\s*['"]pro['"]\s*&&\s*!isCommunityDev/.test(proJs)).toBe(true);
+    expect(/else\s+if\s*\(\s*!isCommunityDev\s*\)/.test(proJs)).toBe(true);
   });
   it('exposes window.__xvmProDays for tier-chip days-left display', () => {
     expect(/window\.__xvmProDays/.test(proJs)).toBe(true);

@@ -130,7 +130,7 @@ describe('#45 step 3 — popup pro UI', () => {
       'proActErrFormat', 'proActErrWorkerUnset', 'proActErrGeneric',
       'proLicenseField', 'proActivatedField', 'proExpiresField',
       'proManageBtn', 'proDeactivateBtn', 'proDeactivating', 'proDeactivatedOk',
-      'proDeactivateErr',
+      'proDeactivateErr', 'communityDevBadge', 'communityDevSub',
     ];
     for (const key of required) {
       expect(en[key]?.message, `en/messages.json must declare ${key}`).toBeTruthy();

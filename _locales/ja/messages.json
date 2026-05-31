@@ -391,6 +391,8 @@
   "heroTrialDaysLeft": { "message": "トライアル残り $DAYS$ 日", "placeholders": { "DAYS": { "content": "$1" } } },
   "heroTrialDayOne":   { "message": "トライアル残り 1 日" },
   "heroProActive":     { "message": "有効 · ご支援ありがとうございます" },
+  "communityDevBadge": { "message": "Community DEV Build" },
+  "communityDevSub":   { "message": "ローカルの Pro 機能はすべて有効です。公式ライセンスサービスと自動更新は Chrome Web Store 版向けです。" },
   "heroFreeTagline":   { "message": "Pro にアップグレードして流速フィルターを開放" },
   "heroCtaUpgradeAnnual":  { "message": "Pro へアップグレード · $$29/年 (17% お得)" },
   "heroCtaUpgradeMonthly": { "message": "月額もあります · $$2.9/月" },

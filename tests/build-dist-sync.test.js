@@ -17,12 +17,15 @@ import { dirname, resolve, join, relative } from 'node:path';
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, '..');
 const dist = resolve(repo, 'dist');
+const buildScript = readFileSync(resolve(repo, 'scripts/build-dist.mjs'), 'utf8');
+const packageJson = JSON.parse(readFileSync(resolve(repo, 'package.json'), 'utf8'));
+const releaseWorkflow = readFileSync(resolve(repo, '.github/workflows/release.yml'), 'utf8');
+const GENERATED_DIST_FILES = new Set(['src/build-channel.js']);
 
 // Same canonical 11 items the build script ships. Read from the build
 // script itself so adding a file to ITEMS automatically gets covered.
 function readItems() {
-  const src = readFileSync(resolve(repo, 'scripts/build-dist.mjs'), 'utf8');
-  const m = src.match(/ITEMS\s*=\s*\[([\s\S]*?)\]/);
+  const m = buildScript.match(/ITEMS\s*=\s*\[([\s\S]*?)\]/);
   if (!m) return [];
   return [...m[1].matchAll(/['"]([^'"]+)['"]/g)].map((x) => x[1]);
 }
@@ -70,6 +73,8 @@ describe('#45 build:dist byte-level sync (Codex P0 fix follow-up)', () => {
       const srcFiles = listFilesRec(srcPath);
       for (const sf of srcFiles) {
         const rel = relative(srcPath, sf);
+        const itemRel = `${item}/${rel}`.replaceAll('\\', '/');
+        if (GENERATED_DIST_FILES.has(itemRel)) continue;
         const df = join(dstPath, rel);
         if (!existsSync(df)) { stale.push(`${item}/${rel} (missing in dist/)`); continue; }
         const srcBuf = readFileSync(sf);
@@ -82,5 +87,35 @@ describe('#45 build:dist byte-level sync (Codex P0 fix follow-up)', () => {
     expect(stale,
       `dist/ is out of sync with source. Run \`npm run build:dist\` to refresh.\nStale entries:\n${stale.map((s) => '  - ' + s).join('\n')}`
     ).toEqual([]);
+  });
+
+  it('build script supports explicit store and community-dev channels', () => {
+    expect(buildScript).toContain("new Set(['store', 'community-dev'])");
+    expect(buildScript).toContain("const channel = readChannel(process.argv.slice(2))");
+    expect(buildScript).toContain("writeFileSync(resolve(dist, 'src/build-channel.js'), channelMarker(channel))");
+    expect(buildScript).toContain("root.__xvmIsCommunityDevBuild = channel === 'community-dev'");
+  });
+
+  it('dist build-channel marker declares an explicit supported channel', () => {
+    const markerPath = resolve(dist, 'src/build-channel.js');
+    expect(existsSync(markerPath), 'dist/src/build-channel.js must exist').toBe(true);
+    const marker = readFileSync(markerPath, 'utf8');
+    expect(marker).toMatch(/const channel = ['"](store|community-dev)['"]/);
+    expect(marker).toContain("root.__xvmIsCommunityDevBuild = channel === 'community-dev'");
+  });
+
+  it('package scripts expose store and community release builds', () => {
+    expect(packageJson.scripts['build:dist']).toContain('--channel store');
+    expect(packageJson.scripts['build:store']).toContain('--channel store');
+    expect(packageJson.scripts['build:community']).toContain('--channel community-dev');
+    expect(packageJson.scripts['package:store']).toContain('--channel store');
+    expect(packageJson.scripts['package:community']).toContain('--channel community-dev');
+  });
+
+  it('GitHub release uploads only the community-dev dist package', () => {
+    expect(releaseWorkflow).toContain('npm run build:community');
+    expect(releaseWorkflow).toContain('x-viral-monitor-${{ github.ref_name }}-community-dev.zip');
+    expect(releaseWorkflow).toContain('Local Pro features are enabled by default');
+    expect(releaseWorkflow).not.toContain('manifest.json content.js bridge.js');
   });
 });

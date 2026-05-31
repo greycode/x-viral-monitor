@@ -391,6 +391,8 @@
   "heroTrialDaysLeft": { "message": "试用还剩 $DAYS$ 天", "placeholders": { "DAYS": { "content": "$1" } } },
   "heroTrialDayOne":   { "message": "试用还剩 1 天" },
   "heroProActive":     { "message": "已激活 · 感谢你的支持!" },
+  "communityDevBadge": { "message": "Community DEV Build" },
+  "communityDevSub":   { "message": "本地 Pro 功能已全部启用。官方 license 服务和自动更新属于 Chrome Web Store 版本。" },
   "heroFreeTagline":   { "message": "升级解锁流速过滤等高级功能" },
   "heroCtaUpgradeAnnual":  { "message": "升级 Pro · $$29/年 (立省 17%)" },
   "heroCtaUpgradeMonthly": { "message": "也可按月订阅 · $$2.9/月" },

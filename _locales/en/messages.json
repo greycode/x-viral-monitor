@@ -393,6 +393,8 @@
   "heroTrialDaysLeft": { "message": "$DAYS$ days left in trial", "placeholders": { "DAYS": { "content": "$1" } } },
   "heroTrialDayOne":   { "message": "1 day left in trial" },
   "heroProActive":     { "message": "Active · thanks for supporting!" },
+  "communityDevBadge": { "message": "Community DEV Build" },
+  "communityDevSub":   { "message": "All local Pro features are enabled. Official license service and auto-updates belong to the Web Store build." },
   "heroFreeTagline":   { "message": "Upgrade for the velocity filter and more" },
   "heroCtaUpgradeAnnual":  { "message": "Upgrade to Pro · $$29/yr (save 17%)" },
   "heroCtaUpgradeMonthly": { "message": "Or pay monthly — $$2.9/mo" },

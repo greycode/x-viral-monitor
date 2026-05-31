@@ -140,7 +140,8 @@
     const refresh = () => {
       const tier = document.body.dataset.tier || 'free';
       let label, sub;
-      if (tier === 'pro') label = t('chipTierPro');
+      if (document.body.dataset.buildChannel === 'community-dev') label = 'DEV';
+      else if (tier === 'pro') label = t('chipTierPro');
       else if (tier === 'trial') label = t('chipTierTrial');
       else label = t('chipTierFree');
       // Trial: show days-left in chip if available via popup-pro state.
@@ -153,7 +154,7 @@
     };
     refresh();
     new MutationObserver(refresh).observe(document.body, {
-      attributes: true, attributeFilter: ['data-tier'],
+      attributes: true, attributeFilter: ['data-tier', 'data-build-channel'],
     });
     window.addEventListener('xvm-pro-days', refresh);
   }

@@ -23,6 +23,7 @@
 
 (() => {
   if (window.__xvmPro) return; // idempotent on hot reload
+  const isCommunityDev = window.__xvmIsCommunityDevBuild === true;
 
   const FEATURE_TIER = {
     'rate-filter': 'trial', // M1 paid feature
@@ -30,9 +31,9 @@
   };
 
   // Fail-closed default until isolated.js posts a real tier.
-  let _currentTier = 'free';
+  let _currentTier = isCommunityDev ? 'pro' : 'free';
   let _daysLeft = 0;
-  let _source = 'init';
+  let _source = isCommunityDev ? 'community-dev' : 'init';
   const _subs = [];
 
   function getCurrentTier()  { return _currentTier; }
@@ -40,6 +41,7 @@
   function getTierSource()   { return _source; }
 
   function isFeatureEnabled(name) {
+    if (isCommunityDev) return true;
     const need = FEATURE_TIER[name];
     if (!need || need === 'free') return true;
     const tier = getCurrentTier();
@@ -51,6 +53,12 @@
   function onTierChange(fn) { if (typeof fn === 'function') _subs.push(fn); }
 
   function _setTier(next, daysLeft, source) {
+    if (isCommunityDev) {
+      _currentTier = 'pro';
+      _daysLeft = 0;
+      _source = 'community-dev';
+      return;
+    }
     // Internal — called when XVM_TIER_UPDATE arrives. Diff-suppressed so
     // subscribers don't see no-op churn.
     const tier = ['free','trial','pro'].includes(next) ? next : 'free';

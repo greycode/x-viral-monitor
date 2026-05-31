@@ -177,13 +177,20 @@ describe('#45 M1 step 1 — premium gate scaffold', () => {
     expect(fIdx, 'filter.js must load BEFORE content.js').toBeLessThan(cIdx);
   });
 
-  it('gate fails CLOSED (defaults to free) until isolated.js pushes tier', () => {
+  it('manifest loads build-channel before license gates', () => {
+    const isolated = manifest.content_scripts.find((cs) => !cs.world);
+    const main = manifest.content_scripts.find((cs) => cs.world === 'MAIN');
+    expect(isolated?.js?.[0], 'isolated world must load build-channel first').toBe('src/build-channel.js');
+    expect(main?.js?.[0], 'MAIN world must load build-channel first').toBe('src/build-channel.js');
+  });
+
+  it('gate fails CLOSED in store builds until isolated.js pushes tier', () => {
     // ADR-0004 invariant: a brief gate-init race must serve free, never
     // an unverified paid tier. Step 1 stub returned 'trial' to exercise
     // the feature end-to-end; step 2 must default to 'free' because the
     // real tier now arrives async from the isolated-world bridge.
-    expect(/let\s+_currentTier\s*=\s*['"]free['"]/.test(gate),
-      'step 2 gate must default to free (fail-closed)'
+    expect(/let\s+_currentTier\s*=\s*isCommunityDev\s*\?\s*['"]pro['"]\s*:\s*['"]free['"]/.test(gate),
+      'store channel must still default to free (fail-closed); community-dev is the explicit opt-in exception'
     ).toBe(true);
   });
 

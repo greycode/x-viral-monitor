@@ -14,23 +14,30 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Build zip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build community dev zip
         run: |
-          mkdir -p dist
-          zip -r dist/x-viral-monitor-${{ github.ref_name }}.zip \
-            manifest.json content.js bridge.js starchart.js popup.html popup.js styles.css \
-            _locales/ icons/ lib/
+          npm ci
+          npm run build:community
+          (cd dist && zip -r ../x-viral-monitor-${{ github.ref_name }}-community-dev.zip .)
 
       - name: Create Release
         uses: softprops/action-gh-release@v3
         with:
-          files: dist/x-viral-monitor-${{ github.ref_name }}.zip
+          files: x-viral-monitor-${{ github.ref_name }}-community-dev.zip
           body: |
             ## X Viral Monitor ${{ github.ref_name }}
 
+            This GitHub release ships the **Community DEV** build. Local Pro features are enabled by default for sideloaded community installs.
+
+            Use the Chrome Web Store build if you want automatic updates, official license activation, and the supported Pro subscription path.
+
             ### Install
 
-            1. Download `x-viral-monitor-${{ github.ref_name }}.zip` below
+            1. Download `x-viral-monitor-${{ github.ref_name }}-community-dev.zip` below
             2. Unzip the downloaded file
             3. Open Chrome → `chrome://extensions/`
             4. Toggle **Developer mode** on (top right corner)
