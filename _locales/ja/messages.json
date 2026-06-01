@@ -274,6 +274,30 @@
   "flashBookmarkFoldersOff": {
     "message": "ブックマークフォルダーメニューを無効化"
   },
+  "contentBookmarkMenuInFolder": {
+    "message": "保存先:"
+  },
+  "contentBookmarkMenuNotInAny": {
+    "message": "どのフォルダーにも入っていません"
+  },
+  "contentBookmarkMenuCheckFailed": {
+    "message": "現在のフォルダーを確認できません。フォルダーをクリックして再試行してください。"
+  },
+  "contentBookmarkMenuChecking": {
+    "message": "現在のフォルダーを確認中…"
+  },
+  "contentBookmarkMenuLoadingFolders": {
+    "message": "ブックマークフォルダーを読み込み中…"
+  },
+  "contentBookmarkMenuLoadFailed": {
+    "message": "フォルダーの読み込みに失敗しました。X Premium が必要な可能性があります。"
+  },
+  "contentBookmarkMenuNoFolders": {
+    "message": "フォルダーはまだありません"
+  },
+  "contentBookmarkMenuNewFolderPlaceholder": {
+    "message": "+ 新規フォルダー（Enter）"
+  },
   "featureBookmarkCountTitle": {
     "message": "🔖 ブックマーク数を表示"
   },

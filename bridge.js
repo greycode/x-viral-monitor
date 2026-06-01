@@ -183,6 +183,14 @@ const CONTENT_MESSAGE_KEYS = [
   'contentLbHotProSub',
   'contentLbHotMonthly',
   'contentLbHotAnnual',
+  'contentBookmarkMenuInFolder',
+  'contentBookmarkMenuNotInAny',
+  'contentBookmarkMenuCheckFailed',
+  'contentBookmarkMenuChecking',
+  'contentBookmarkMenuLoadingFolders',
+  'contentBookmarkMenuLoadFailed',
+  'contentBookmarkMenuNoFolders',
+  'contentBookmarkMenuNewFolderPlaceholder',
 ];
 
 const DEFAULT_FEATURES = {
@@ -350,6 +358,20 @@ window.addEventListener('message', (event) => {
 
   if (type === 'XVM_REQUEST_FOLDER_REFRESH') {
     refreshFolders();
+    return;
+  }
+
+  if (type === 'XVM_BOOKMARK_FOLDER_MUTATION' && event.data.folderId) {
+    const mutation = {
+      folderId: String(event.data.folderId),
+      tweetId: String(event.data.tweetId || ''),
+      action: String(event.data.action || ''),
+      at: Date.now(),
+    };
+    window.postMessage({ type: 'XVM_BOOKMARK_FOLDER_DIRTY', ...mutation }, '*');
+    safeChromeCall(() => {
+      chrome.storage.local.set({ bookmarkFolderMutation: mutation });
+    });
     return;
   }
 
@@ -556,6 +578,12 @@ safeChromeCall(() => {
         const cache = changes.bookmarkFoldersCache.newValue;
         if (cache?.folders) pushFolders(cache.folders, cache.cachedAt || 0);
       }
+      if (changes.bookmarkFolderMutation?.newValue) {
+        window.postMessage({
+          type: 'XVM_BOOKMARK_FOLDER_DIRTY',
+          ...changes.bookmarkFolderMutation.newValue,
+        }, '*');
+      }
       return;
     }
 
@@ -573,6 +601,9 @@ safeChromeCall(() => {
       chrome.storage.sync.get(STORAGE_DEFAULTS, (items) => {
         pushSettings(items);
       });
+      if (changes.featureBookmarkFolders?.newValue === true) {
+        refreshFolders();
+      }
       if (grokTouched) {
         chrome.storage.sync.get({
           grokCommentPrompt: DEFAULT_FEATURES.grokCommentPrompt,

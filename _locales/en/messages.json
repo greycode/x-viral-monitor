@@ -276,6 +276,30 @@
   "flashBookmarkFoldersOff": {
     "message": "Bookmark folder menu disabled"
   },
+  "contentBookmarkMenuInFolder": {
+    "message": "In folder:"
+  },
+  "contentBookmarkMenuNotInAny": {
+    "message": "Not in any folder"
+  },
+  "contentBookmarkMenuCheckFailed": {
+    "message": "Couldn’t check current folder. Click a folder to retry."
+  },
+  "contentBookmarkMenuChecking": {
+    "message": "Checking current folder…"
+  },
+  "contentBookmarkMenuLoadingFolders": {
+    "message": "Loading bookmark folders…"
+  },
+  "contentBookmarkMenuLoadFailed": {
+    "message": "Failed to load folders. X Premium may be required."
+  },
+  "contentBookmarkMenuNoFolders": {
+    "message": "No folders yet"
+  },
+  "contentBookmarkMenuNewFolderPlaceholder": {
+    "message": "+ New folder (Enter)"
+  },
   "featureBookmarkCountTitle": {
     "message": "🔖 Show bookmark count"
   },

@@ -274,6 +274,30 @@
   "flashBookmarkFoldersOff": {
     "message": "已关闭书签文件夹菜单"
   },
+  "contentBookmarkMenuInFolder": {
+    "message": "已保存到："
+  },
+  "contentBookmarkMenuNotInAny": {
+    "message": "尚未保存到任何文件夹"
+  },
+  "contentBookmarkMenuCheckFailed": {
+    "message": "无法确认当前文件夹，点击文件夹可重试。"
+  },
+  "contentBookmarkMenuChecking": {
+    "message": "正在检查当前文件夹…"
+  },
+  "contentBookmarkMenuLoadingFolders": {
+    "message": "正在加载书签文件夹…"
+  },
+  "contentBookmarkMenuLoadFailed": {
+    "message": "加载文件夹失败，可能需要 X Premium。"
+  },
+  "contentBookmarkMenuNoFolders": {
+    "message": "还没有文件夹"
+  },
+  "contentBookmarkMenuNewFolderPlaceholder": {
+    "message": "+ 新建文件夹（回车）"
+  },
   "featureBookmarkCountTitle": {
     "message": "🔖 显示书签收藏数"
   },
